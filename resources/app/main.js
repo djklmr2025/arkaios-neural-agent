@@ -1,21 +1,34 @@
-import { app, BrowserWindow, shell, Menu, ipcMain, dialog, screen, nativeImage } from 'electron';
-import path from 'path';
-import electronUpdater from 'electron-updater';
-import { fileURLToPath } from 'url';
-import isDev from 'electron-is-dev';
-import Store from 'electron-store';
-import fs from 'fs';
-import constants from './electron/utils/constants.js';
-import { spawn, exec, execSync } from 'child_process';
-import { generatePKCE } from './electron/utils/oauth.js';
-import express from 'express';
-import kill from 'tree-kill';
-import url from 'url';
-import http from 'http';
-import { v4 as uuidv4 } from 'uuid';
-import { setupBackgroundMode, isBackgroundModeReady } from './electron/utils/wslSetup.js';
-import { getOptimalAgentBinary, cleanupExtractedBinary } from './electron/utils/agentPath.js';
-import MacOSPermissions from './electron/utils/macos-permissions.js';
+import { exec, execSync, spawn } from "child_process";
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  Menu,
+  nativeImage,
+  screen,
+  shell,
+} from "electron";
+import isDev from "electron-is-dev";
+import Store from "electron-store";
+import electronUpdater from "electron-updater";
+import express from "express";
+import fs from "fs";
+import http from "http";
+import path from "path";
+import kill from "tree-kill";
+import url, { fileURLToPath } from "url";
+import { v4 as uuidv4 } from "uuid";
+import {
+  cleanupExtractedBinary,
+  getOptimalAgentBinary,
+} from "./electron/utils/agentPath.js";
+import constants from "./electron/utils/constants.js";
+import MacOSPermissions from "./electron/utils/macos-permissions.js";
+import { generatePKCE } from "./electron/utils/oauth.js";
+import {
+  isBackgroundModeReady,
+  setupBackgroundMode,
+} from "./electron/utils/wslSetup.js";
 
 const { autoUpdater } = electronUpdater;
 
@@ -24,13 +37,23 @@ const __dirname = path.dirname(__filename);
 
 // Forzar un directorio de userData estable y conocido antes de que electron-store se inicialice.
 try {
-  const forcedUserData = path.join(app.getPath('appData'), 'neuralagent-desktop');
+  const forcedUserData = path.join(
+    app.getPath("appData"),
+    "neuralagent-desktop"
+  );
   if (forcedUserData && forcedUserData.length > 0) {
-    app.setPath('userData', forcedUserData);
-    console.log('[UserData dir]', app.getPath('userData'));
-    try { fs.appendFileSync(path.join(forcedUserData, 'arkaios.log'), `[BOOT] userData=${forcedUserData}\n`); } catch {}
+    app.setPath("userData", forcedUserData);
+    console.log("[UserData dir]", app.getPath("userData"));
+    try {
+      fs.appendFileSync(
+        path.join(forcedUserData, "arkaios.log"),
+        `[BOOT] userData=${forcedUserData}\n`
+      );
+    } catch {}
   }
-} catch (e) { console.warn('[UserData setPath failed]', e?.message || e); }
+} catch (e) {
+  console.warn("[UserData setPath failed]", e?.message || e);
+}
 
 // Guardar contra corrupción del archivo de configuración de electron-store.
 // Si JSON.parse falla dentro de Conf/electron-store, interceptamos, respaldamos y regeneramos un config.json mínimo.
@@ -39,28 +62,49 @@ const originalReadFileSync = fs.readFileSync;
 fs.readFileSync = function patchedReadFileSync(filePath, options) {
   // Loguear lecturas sospechosas para diagnósticos
   try {
-    if (typeof filePath === 'string' && /config\.json|neuralagent/i.test(filePath)) {
-      console.log('[fs.readFileSync]', filePath);
-      const logFile = path.join(app.getPath('userData'), 'arkaios.log');
-      try { fs.appendFileSync(logFile, `[readFileSync] ${filePath}\n`); } catch {}
+    if (
+      typeof filePath === "string" &&
+      /config\.json|neuralagent/i.test(filePath)
+    ) {
+      console.log("[fs.readFileSync]", filePath);
+      const logFile = path.join(app.getPath("userData"), "arkaios.log");
+      try {
+        fs.appendFileSync(logFile, `[readFileSync] ${filePath}\n`);
+      } catch {}
     }
   } catch {}
   const data = originalReadFileSync.apply(fs, arguments);
   try {
-    const isCfg = typeof filePath === 'string' && /config\.json$/i.test(filePath) && /neuralagent/i.test(filePath);
+    const isCfg =
+      typeof filePath === "string" &&
+      /config\.json$/i.test(filePath) &&
+      /neuralagent/i.test(filePath);
     if (isCfg) {
-      const txt = Buffer.isBuffer(data) ? data.toString('utf8') : String(data);
-      const first = (txt || '').trim().slice(0, 1);
-      const looksInvalid = first === '<' || first === ':' || first === '"' || first === 't' || !/^[\[{]/.test(first);
+      const txt = Buffer.isBuffer(data) ? data.toString("utf8") : String(data);
+      const first = (txt || "").trim().slice(0, 1);
+      const looksInvalid =
+        first === "<" ||
+        first === ":" ||
+        first === '"' ||
+        first === "t" ||
+        !/^[\[{]/.test(first);
       if (looksInvalid) {
         try {
-          const backup = filePath + '.invalid.' + Date.now();
+          const backup = filePath + ".invalid." + Date.now();
           fs.copyFileSync(filePath, backup);
-          fs.writeFileSync(filePath, '{}', 'utf8');
-          console.error('[Store] Patched invalid config.json, backup at', backup);
-          try { fs.appendFileSync(path.join(app.getPath('userData'), 'arkaios.log'), `[patched] ${filePath} -> ${backup}\n`); } catch {}
+          fs.writeFileSync(filePath, "{}", "utf8");
+          console.error(
+            "[Store] Patched invalid config.json, backup at",
+            backup
+          );
+          try {
+            fs.appendFileSync(
+              path.join(app.getPath("userData"), "arkaios.log"),
+              `[patched] ${filePath} -> ${backup}\n`
+            );
+          } catch {}
         } catch {}
-        return Buffer.from('{}');
+        return Buffer.from("{}");
       }
     }
   } catch {}
@@ -72,19 +116,28 @@ try {
   store = new Store();
 } catch (e) {
   try {
-    const userData = app.getPath('userData');
-    const cfg = path.join(userData, 'config.json');
-    const backup = cfg + '.corrupt.' + Date.now();
+    const userData = app.getPath("userData");
+    const cfg = path.join(userData, "config.json");
+    const backup = cfg + ".corrupt." + Date.now();
     if (fs.existsSync(cfg)) {
-      try { fs.copyFileSync(cfg, backup); } catch {}
+      try {
+        fs.copyFileSync(cfg, backup);
+      } catch {}
     }
-    try { fs.writeFileSync(cfg, '{}', 'utf8'); } catch {}
+    try {
+      fs.writeFileSync(cfg, "{}", "utf8");
+    } catch {}
     store = new Store();
-    console.error('[Store] Recovered from invalid JSON at', cfg, 'backup:', backup);
+    console.error(
+      "[Store] Recovered from invalid JSON at",
+      cfg,
+      "backup:",
+      backup
+    );
   } catch (err2) {
-    console.error('[Store] Failed to recover store:', err2?.message || err2);
+    console.error("[Store] Failed to recover store:", err2?.message || err2);
     // Último recurso: usar un nombre alternativo para evitar el archivo corrupto
-    store = new Store({ name: 'config_safe_fallback' });
+    store = new Store({ name: "config_safe_fallback" });
   }
 }
 const permissions = new MacOSPermissions();
@@ -114,36 +167,36 @@ autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
 
 autoUpdater.setFeedURL({
-  provider: 'generic',
-  url: 'https://api.getneuralagent.com/apps/neuralagent_desktop/updates/'
+  provider: "generic",
+  url: "https://api.getneuralagent.com/apps/neuralagent_desktop/updates/",
 });
 
 function setupAutoUpdater(window) {
-  autoUpdater.on('checking-for-update', () => {
-    console.log('Checking for update...');
+  autoUpdater.on("checking-for-update", () => {
+    console.log("Checking for update...");
   });
 
-  autoUpdater.on('update-available', (info) => {
-    console.log('Update available:', info);
-    window.webContents.send('update-available', {
+  autoUpdater.on("update-available", (info) => {
+    console.log("Update available:", info);
+    window.webContents.send("update-available", {
       version: info.version,
       releaseDate: info.releaseDate,
       releaseNotes: info.releaseNotes,
     });
   });
 
-  autoUpdater.on('update-not-available', (info) => {
-    console.log('Update not available');
-    window.webContents.send('update-not-available');
+  autoUpdater.on("update-not-available", (info) => {
+    console.log("Update not available");
+    window.webContents.send("update-not-available");
   });
 
-  autoUpdater.on('error', (error) => {
-    console.error('AutoUpdater error:', error);
-    window.webContents.send('update-error', error.message);
+  autoUpdater.on("error", (error) => {
+    console.error("AutoUpdater error:", error);
+    window.webContents.send("update-error", error.message);
   });
 
-  autoUpdater.on('download-progress', (progressObj) => {
-    window.webContents.send('download-progress', {
+  autoUpdater.on("download-progress", (progressObj) => {
+    window.webContents.send("download-progress", {
       percent: progressObj.percent,
       transferred: progressObj.transferred,
       total: progressObj.total,
@@ -151,119 +204,126 @@ function setupAutoUpdater(window) {
     });
   });
 
-  autoUpdater.on('update-downloaded', (info) => {
-    console.log('Update downloaded');
-    window.webContents.send('update-downloaded', info);
+  autoUpdater.on("update-downloaded", (info) => {
+    console.log("Update downloaded");
+    window.webContents.send("update-downloaded", info);
   });
 }
 
-ipcMain.handle('check-for-updates', async () => {
+ipcMain.handle("check-for-updates", async () => {
   try {
     const result = await autoUpdater.checkForUpdates();
     return { success: true, updateInfo: result?.updateInfo };
   } catch (error) {
-    console.error('Check for updates error:', error);
+    console.error("Check for updates error:", error);
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('download-update', async () => {
+ipcMain.handle("download-update", async () => {
   try {
     await autoUpdater.downloadUpdate();
     return { success: true };
   } catch (error) {
-    console.error('Download update error:', error);
+    console.error("Download update error:", error);
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('install-update', () => {
+ipcMain.handle("install-update", () => {
   autoUpdater.quitAndInstall(false, true);
 });
 
-ipcMain.handle('get-app-version', () => {
+ipcMain.handle("get-app-version", () => {
   return app.getVersion();
 });
 
-ipcMain.handle('open-external', async (_, url) => {
+ipcMain.handle("open-external", async (_, url) => {
   shell.openExternal(url);
 });
 
-ipcMain.on('set-token', (_, token) => {
+ipcMain.on("set-token", (_, token) => {
   store.set(constants.ACCESS_TOKEN_STORE_KEY, token);
   if (!overlayWindow) {
     createOverlayWindow();
   }
 });
 
-ipcMain.handle('get-token', () => store.get(constants.ACCESS_TOKEN_STORE_KEY));
-ipcMain.on('delete-token', () => {
+ipcMain.handle("get-token", () => store.get(constants.ACCESS_TOKEN_STORE_KEY));
+ipcMain.on("delete-token", () => {
   store.delete(constants.ACCESS_TOKEN_STORE_KEY);
   if (overlayWindow) {
     overlayWindow.close();
   }
 });
-ipcMain.on('set-refresh-token', (_, token) => store.set(constants.REFRESH_TOKEN_STORE_KEY, token));
-ipcMain.handle('get-refresh-token', () => store.get(constants.REFRESH_TOKEN_STORE_KEY));
-ipcMain.on('delete-refresh-token', () => store.delete(constants.REFRESH_TOKEN_STORE_KEY));
-ipcMain.handle('check-permissions', async () => {
+ipcMain.on("set-refresh-token", (_, token) =>
+  store.set(constants.REFRESH_TOKEN_STORE_KEY, token)
+);
+ipcMain.handle("get-refresh-token", () =>
+  store.get(constants.REFRESH_TOKEN_STORE_KEY)
+);
+ipcMain.on("delete-refresh-token", () =>
+  store.delete(constants.REFRESH_TOKEN_STORE_KEY)
+);
+ipcMain.handle("check-permissions", async () => {
   return await permissions.checkAllPermissions();
 });
 
-ipcMain.handle('request-accessibility', async () => {
+ipcMain.handle("request-accessibility", async () => {
   return await permissions.requestAccessibility();
 });
 
-ipcMain.handle('request-screen-recording', async () => {
+ipcMain.handle("request-screen-recording", async () => {
   return await permissions.requestScreenRecording();
 });
 
-ipcMain.handle('open-system-preferences', async (event, permission) => {
+ipcMain.handle("open-system-preferences", async (event, permission) => {
   return await permissions.openSystemPreferences(permission);
 });
 
-ipcMain.handle('get-app-management-shown', () => {
-  return store.get(constants.APP_MANAGEMENT_SHOWN_KEY, 'false');
+ipcMain.handle("get-app-management-shown", () => {
+  return store.get(constants.APP_MANAGEMENT_SHOWN_KEY, "false");
 });
 
-ipcMain.on('set-app-management-shown', () => {
-  store.set(constants.APP_MANAGEMENT_SHOWN_KEY, 'true');
+ipcMain.on("set-app-management-shown", () => {
+  store.set(constants.APP_MANAGEMENT_SHOWN_KEY, "true");
 });
 
-
-ipcMain.on('expand-overlay', (_, hasSuggestions) => {
+ipcMain.on("expand-overlay", (_, hasSuggestions) => {
   console.log("[Main Process] Received 'expand-overlay' IPC message.");
   expandMinimizeOverlay(true, hasSuggestions);
 });
 
-ipcMain.on('set-dark-mode', (_, isDarkMode) => {
+ipcMain.on("set-dark-mode", (_, isDarkMode) => {
   store.set(constants.DARK_MODE_STORE_KEY, isDarkMode.toString());
   if (overlayWindow) {
     overlayWindow.reload();
   }
 });
-ipcMain.handle('is-dark-mode', () => store.get(constants.DARK_MODE_STORE_KEY));
+ipcMain.handle("is-dark-mode", () => store.get(constants.DARK_MODE_STORE_KEY));
 
-ipcMain.handle('get-last-background-mode-value', () => store.get(constants.LAST_BACKGROUND_MODE_VALUE));
+ipcMain.handle("get-last-background-mode-value", () =>
+  store.get(constants.LAST_BACKGROUND_MODE_VALUE)
+);
 
 // Handle MINIMIZE request
-ipcMain.on('minimize-overlay', () => {
+ipcMain.on("minimize-overlay", () => {
   console.log("[Main Process] Received 'minimize-overlay' IPC message.");
   expandMinimizeOverlay(false);
 });
 
-ipcMain.handle('check-background-ready', () => {
-  const isWindows = process.platform === 'win32';
-  const isMac = process.platform === 'darwin';
+ipcMain.handle("check-background-ready", () => {
+  const isWindows = process.platform === "win32";
+  const isMac = process.platform === "darwin";
   if (isWindows) {
-    return isBackgroundModeReady(); 
+    return isBackgroundModeReady();
   }
   return true;
 });
 
-ipcMain.handle('start-background-setup', async () => {
-  const isWindows = process.platform === 'win32';
-  const isMac = process.platform === 'darwin';
+ipcMain.handle("start-background-setup", async () => {
+  const isWindows = process.platform === "win32";
+  const isMac = process.platform === "darwin";
   if (isWindows) {
     if (bgSetupWindow && !bgSetupWindow.isDestroyed()) {
       bgSetupWindow.focus();
@@ -273,27 +333,37 @@ ipcMain.handle('start-background-setup', async () => {
     bgSetupWindow = new BrowserWindow({
       width: 600,
       height: 300,
-      title: 'Setting up Background Mode',
+      title: "Setting up Background Mode",
       resizable: false,
       modal: true,
-      icon: path.join(__dirname, 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
+      icon: path.join(
+        __dirname,
+        "assets",
+        process.platform === "win32" ? "icon.ico" : "icon.png"
+      ),
       webPreferences: {
-        preload: path.join(__dirname, 'electron', 'preload.js'),
+        preload: path.join(__dirname, "electron", "preload.js"),
         contextIsolation: true,
       },
     });
 
     const bgSetupUrl = isDev
-      ? 'http://localhost:6763/#/background-setup'
-      : `file://${path.join(__dirname, 'neuralagent-app', 'build', 'index.html')}#/background-setup`;
+      ? "http://localhost:6763/#/background-setup"
+      : `file://${path.join(
+          __dirname,
+          "neuralagent-app",
+          "build",
+          "index.html"
+        )}#/background-setup`;
 
     bgSetupWindow.loadURL(bgSetupUrl);
 
-    bgSetupWindow.on('closed', () => {
+    bgSetupWindow.on("closed", () => {
       bgSetupWindow = null;
     });
 
-    const defaultErr = 'Setup Failed: Please ensure you have Windows 10 or higher and that virtualization is enabled in BIOS.';
+    const defaultErr =
+      "Setup Failed: Please ensure you have Windows 10 or higher and that virtualization is enabled in BIOS.";
 
     let result = { success: false, error: defaultErr };
 
@@ -301,17 +371,17 @@ ipcMain.handle('start-background-setup', async () => {
       result = await setupBackgroundMode({
         onStatus: (msg) => {
           if (!bgSetupWindow?.isDestroyed()) {
-            bgSetupWindow.webContents.send('setup-status', msg);
+            bgSetupWindow.webContents.send("setup-status", msg);
           }
         },
         onProgress: (pct) => {
           if (!bgSetupWindow?.isDestroyed()) {
-            bgSetupWindow.webContents.send('setup-progress', pct);
+            bgSetupWindow.webContents.send("setup-progress", pct);
           }
         },
       });
     } catch (err) {
-      console.error('❌ Setup failed:', err);
+      console.error("❌ Setup failed:", err);
       result = {
         success: false,
         error: err?.message || defaultErr,
@@ -319,7 +389,7 @@ ipcMain.handle('start-background-setup', async () => {
     }
 
     if (bgSetupWindow && !bgSetupWindow.isDestroyed()) {
-      bgSetupWindow.webContents.send('setup-complete', result);
+      bgSetupWindow.webContents.send("setup-complete", result);
     }
 
     if (result.success) {
@@ -331,61 +401,59 @@ ipcMain.handle('start-background-setup', async () => {
 });
 
 // Hide overlay temporarily during agent mouse actions
-ipcMain.on('hide-overlay-temporarily', (_, duration = 3000) => {
+ipcMain.on("hide-overlay-temporarily", (_, duration = 3000) => {
   if (!overlayWindow || overlayWindow.isDestroyed()) return;
-  
+
   console.log(`[Overlay] Hiding temporarily for ${duration}ms`);
-  
+
   // Clear any existing timeout
   if (overlayHideTimeout) {
     clearTimeout(overlayHideTimeout);
   }
-  
+
   // Hide the overlay
   overlayWindow.hide();
-  
+
   // Set timeout to show it again WITHOUT taking focus
   overlayHideTimeout = setTimeout(() => {
     if (overlayWindow && !overlayWindow.isDestroyed()) {
       // Show overlay without stealing focus
       overlayWindow.showInactive();
-      console.log('[Overlay] Restored after temporary hide (no focus)');
+      console.log("[Overlay] Restored after temporary hide (no focus)");
     }
     overlayHideTimeout = null;
   }, duration);
 });
 
 // Manual overlay show/hide controls
-ipcMain.on('show-overlay', () => {
+ipcMain.on("show-overlay", () => {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.showInactive(); // Don't steal focus
   }
 });
 
-ipcMain.on('hide-overlay', () => {
+ipcMain.on("hide-overlay", () => {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.hide();
   }
 });
 
 // Make overlay click-through during agent operations
-ipcMain.on('set-overlay-click-through', (_, clickThrough = true) => {
+ipcMain.on("set-overlay-click-through", (_, clickThrough = true) => {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
     try {
       overlayWindow.setIgnoreMouseEvents(clickThrough);
       console.log(`[Overlay] Click-through mode: ${clickThrough}`);
     } catch (error) {
-      console.warn('[Overlay] setIgnoreMouseEvents not supported:', error);
+      console.warn("[Overlay] setIgnoreMouseEvents not supported:", error);
     }
   }
 });
 
-
-ipcMain.handle('get-suggestions', async (_, baseURL) => {
+ipcMain.handle("get-suggestions", async (_, baseURL) => {
   return new Promise((resolve, reject) => {
-
-    const isWindows = process.platform === 'win32';
-    const isMac = process.platform === 'darwin';
+    const isWindows = process.platform === "win32";
+    const isMac = process.platform === "darwin";
 
     // const suggestor = spawn(isWindows ? './aiagent/venv/Scripts/python' : './aiagent/venv/bin/python', ['./aiagent/main.py'], {
     //   env: {
@@ -402,130 +470,162 @@ ipcMain.handle('get-suggestions', async (_, baseURL) => {
       env: {
         ...process.env,
         NEURALAGENT_API_URL: baseURL,
-        NEURALAGENT_USER_ACCESS_TOKEN: store.get(constants.ACCESS_TOKEN_STORE_KEY),
-        NEURALAGENT_AGENT_MODE: 'suggestor',
+        NEURALAGENT_USER_ACCESS_TOKEN: store.get(
+          constants.ACCESS_TOKEN_STORE_KEY
+        ),
+        NEURALAGENT_AGENT_MODE: "suggestor",
       },
     });
 
-    let output = '';
-    let errorOutput = '';
+    let output = "";
+    let errorOutput = "";
 
-    suggestor.stdout.on('data', (data) => {
+    suggestor.stdout.on("data", (data) => {
       output += data.toString();
     });
 
-    suggestor.stderr.on('data', (data) => {
+    suggestor.stderr.on("data", (data) => {
       errorOutput += data.toString();
     });
 
-    suggestor.on('close', (code) => {
+    suggestor.on("close", (code) => {
       if (code === 0) {
         try {
           const result = JSON.parse(output);
           resolve(result);
         } catch (err) {
-          console.error('❌ Failed to parse suggestor output:', output);
+          console.error("❌ Failed to parse suggestor output:", output);
           reject(err);
         }
       } else {
-        console.error('❌ Suggestor exited with error:', errorOutput);
-        reject(new Error('Suggestor failed'));
+        console.error("❌ Suggestor exited with error:", errorOutput);
+        reject(new Error("Suggestor failed"));
       }
     });
   });
 });
 
-ipcMain.on('launch-ai-agent', async (_, baseURL, threadId, backgroundMode, aiResponse) => {
-  const isWindows = process.platform === 'win32';
-  const isMac = process.platform === 'darwin';
+ipcMain.on(
+  "launch-ai-agent",
+  async (_, baseURL, threadId, backgroundMode, aiResponse) => {
+    const isWindows = process.platform === "win32";
+    const isMac = process.platform === "darwin";
 
-  store.set(constants.LAST_BACKGROUND_MODE_VALUE, backgroundMode.toString());
+    store.set(constants.LAST_BACKGROUND_MODE_VALUE, backgroundMode.toString());
 
-  if (!backgroundMode || isMac) {
-    // aiagentProcess = spawn(isWindows ? './aiagent/venv/Scripts/python' : './aiagent/venv/bin/python', ['./aiagent/main.py'], {
-    //   env: {
-    //     ...process.env,
-    //     NEURALAGENT_API_URL: baseURL,
-    //     NEURALAGENT_THREAD_ID: threadId,
-    //     NEURALAGENT_USER_ACCESS_TOKEN: store.get(constants.ACCESS_TOKEN_STORE_KEY),
-    //     NEURALAGENT_AGENT_MODE: backgroundMode ? 'background_agent' : 'agent',
-    //     PYTHONUTF8: '1',
-    //   },
-    // });
+    if (!backgroundMode || isMac) {
+      // aiagentProcess = spawn(isWindows ? './aiagent/venv/Scripts/python' : './aiagent/venv/bin/python', ['./aiagent/main.py'], {
+      //   env: {
+      //     ...process.env,
+      //     NEURALAGENT_API_URL: baseURL,
+      //     NEURALAGENT_THREAD_ID: threadId,
+      //     NEURALAGENT_USER_ACCESS_TOKEN: store.get(constants.ACCESS_TOKEN_STORE_KEY),
+      //     NEURALAGENT_AGENT_MODE: backgroundMode ? 'background_agent' : 'agent',
+      //     PYTHONUTF8: '1',
+      //   },
+      // });
 
-    mainWindow?.minimize();
+      mainWindow?.minimize();
 
-    const agentPath = getOptimalAgentBinary();
-    
-    aiagentProcess = spawn(agentPath, [], {
-      env: {
-        ...process.env,
-        NEURALAGENT_API_URL: baseURL,
-        NEURALAGENT_THREAD_ID: threadId,
-        NEURALAGENT_USER_ACCESS_TOKEN: store.get(constants.ACCESS_TOKEN_STORE_KEY),
-        NEURALAGENT_AGENT_MODE: backgroundMode ? 'background_agent' : 'agent',
-      },
+      const agentPath = getOptimalAgentBinary();
+
+      aiagentProcess = spawn(agentPath, [], {
+        env: {
+          ...process.env,
+          NEURALAGENT_API_URL: baseURL,
+          NEURALAGENT_THREAD_ID: threadId,
+          NEURALAGENT_USER_ACCESS_TOKEN: store.get(
+            constants.ACCESS_TOKEN_STORE_KEY
+          ),
+          NEURALAGENT_AGENT_MODE: backgroundMode ? "background_agent" : "agent",
+        },
+      });
+    } else {
+      if (isWindows) {
+        // VERY IMPORTANT
+        const envVars = {
+          ...process.env,
+          NEURALAGENT_API_URL: baseURL, // 'http://192.168.8.101:8000',
+          NEURALAGENT_THREAD_ID: threadId,
+          NEURALAGENT_USER_ACCESS_TOKEN: store.get(
+            constants.ACCESS_TOKEN_STORE_KEY
+          ),
+          SKIP_LLM_API_KEY_VERIFICATION: "true",
+          PYTHONUTF8: "1",
+        };
+
+        const shellCommand =
+          Object.entries(envVars)
+            .map(([k, v]) => `${k}="${v}"`)
+            .join(" ") + " bash /agent/launch_bg_agent.sh";
+
+        aiagentProcess = spawn("wsl", [
+          "-d",
+          "NeuralOS",
+          "--",
+          "bash",
+          "-c",
+          shellCommand,
+        ]);
+
+        launchBackgroundAgentWindow();
+      }
+    }
+
+    mainWindow?.webContents.send(
+      "ai-agent-launch",
+      threadId,
+      backgroundMode,
+      aiResponse
+    );
+    overlayWindow?.webContents.send(
+      "ai-agent-launch",
+      threadId,
+      backgroundMode,
+      aiResponse
+    );
+    expandMinimizeOverlay(true, false);
+
+    aiagentProcess.stdout.on("data", (data) =>
+      console.log(`[Agent stdout]: ${data}`)
+    );
+    aiagentProcess.stderr.on("data", (data) =>
+      console.error(`[Agent stderr]: ${data}`)
+    );
+
+    aiagentProcess.on("error", (err) => {
+      console.error("❌  Agent process failed to start:", err);
+      mainWindow?.webContents.send("trigger-cancel-all-tasks");
     });
-  } else {
-    if (isWindows) {
-      // VERY IMPORTANT
-      const envVars = {
-        ...process.env,
-        NEURALAGENT_API_URL: baseURL, // 'http://192.168.8.101:8000',
-        NEURALAGENT_THREAD_ID: threadId,
-        NEURALAGENT_USER_ACCESS_TOKEN: store.get(constants.ACCESS_TOKEN_STORE_KEY),
-        SKIP_LLM_API_KEY_VERIFICATION: 'true',
-        PYTHONUTF8: '1',
-      };
 
-      const shellCommand = Object.entries(envVars)
-        .map(([k, v]) => `${k}="${v}"`).join(' ') + ' bash /agent/launch_bg_agent.sh';
+    aiagentProcess.on("exit", (code, signal) => {
+      console.log(`[Agent exited with code ${code}]`);
+      if (bgAgentWindow) {
+        bgAgentWindow.close();
+      }
+      cleanupBGAgent();
+      if (mainWindow?.isMinimized()) {
+        mainWindow.restore();
+      }
+      if (mainWindow) {
+        mainWindow.focus();
+      }
+      mainWindow?.webContents.send("ai-agent-exit");
+      overlayWindow?.webContents.send("ai-agent-exit");
 
-      aiagentProcess = spawn('wsl', ['-d', 'NeuralOS', '--', 'bash', '-c', shellCommand]);
-
-      launchBackgroundAgentWindow();
-    }
+      if (code !== 0 || signal) {
+        mainWindow?.webContents.send("trigger-cancel-all-tasks");
+      }
+      aiagentProcess = null;
+    });
   }
+);
 
-  mainWindow?.webContents.send('ai-agent-launch', threadId, backgroundMode, aiResponse);
-  overlayWindow?.webContents.send('ai-agent-launch', threadId, backgroundMode, aiResponse);
-  expandMinimizeOverlay(true, false);
-
-  aiagentProcess.stdout.on('data', (data) => console.log(`[Agent stdout]: ${data}`));
-  aiagentProcess.stderr.on('data', (data) => console.error(`[Agent stderr]: ${data}`));
-
-  aiagentProcess.on('error', err => {
-    console.error('❌  Agent process failed to start:', err);
-    mainWindow?.webContents.send('trigger-cancel-all-tasks');
-  });
-
-  aiagentProcess.on('exit', (code, signal) => {
-    console.log(`[Agent exited with code ${code}]`);
-    if (bgAgentWindow) {
-      bgAgentWindow.close();
-    }
-    cleanupBGAgent();
-    if (mainWindow?.isMinimized()) {
-      mainWindow.restore();
-    }
-    if (mainWindow) {
-      mainWindow.focus();
-    }
-    mainWindow?.webContents.send('ai-agent-exit');
-    overlayWindow?.webContents.send('ai-agent-exit');
-
-    if (code !== 0 || signal) {
-      mainWindow?.webContents.send('trigger-cancel-all-tasks');
-    }
-    aiagentProcess = null;
-  });
-});
-
-ipcMain.on('stop-ai-agent', () => {
+ipcMain.on("stop-ai-agent", () => {
   if (aiagentProcess && !aiagentProcess.killed) {
-    kill(aiagentProcess.pid, 'SIGKILL', (err) => {
-      if (err) console.error('❌ Failed to kill agent:', err);
-      else console.log('[✅ Agent forcibly stopped]');
+    kill(aiagentProcess.pid, "SIGKILL", (err) => {
+      if (err) console.error("❌ Failed to kill agent:", err);
+      else console.log("[✅ Agent forcibly stopped]");
     });
   }
   aiagentProcess = null;
@@ -533,113 +633,131 @@ ipcMain.on('stop-ai-agent', () => {
 });
 
 // Clerk OIDC config (fallbacks are the values you shared; prefer environment variables if present)
-const CLERK_OIDC_DOMAIN = process.env.CLERK_OIDC_DOMAIN || 'https://witty-sparrow-27.clerk.accounts.dev';
-const CLERK_CLIENT_ID = process.env.CLERK_CLIENT_ID || 'GLOeBI08W44jxam4';
-const CLERK_CLIENT_SECRET = process.env.CLERK_CLIENT_SECRET || 'RN1YZNTUzlA2qfcYsgyhZIRWyRYp7v5P';
+const CLERK_OIDC_DOMAIN =
+  process.env.CLERK_OIDC_DOMAIN ||
+  "https://witty-sparrow-27.clerk.accounts.dev";
+const CLERK_CLIENT_ID = process.env.CLERK_CLIENT_ID || "GLOeBI08W44jxam4";
+const CLERK_CLIENT_SECRET =
+  process.env.CLERK_CLIENT_SECRET || "RN1YZNTUzlA2qfcYsgyhZIRWyRYp7v5P";
 const CLERK_AUTHORIZE_URL = `${CLERK_OIDC_DOMAIN}/oauth/authorize`;
 const CLERK_TOKEN_URL = `${CLERK_OIDC_DOMAIN}/oauth/token`;
 const CLERK_USERINFO_URL = `${CLERK_OIDC_DOMAIN}/oauth/userinfo`;
-const REDIRECT_URI = 'http://127.0.0.1:36478/callback';
+const REDIRECT_URI = "http://127.0.0.1:36478/callback";
 
 function openUrlInBrowser(targetUrl) {
   const platform = process.platform;
   const command =
-    platform === 'win32'
+    platform === "win32"
       ? `start "" "${targetUrl}"`
-      : platform === 'darwin'
+      : platform === "darwin"
       ? `open "${targetUrl}"`
       : `xdg-open "${targetUrl}"`;
   exec(command);
 }
 
 // For compatibility we keep the same IPC handler name, but we now use Clerk as IdP
-ipcMain.handle('login-with-google', async () => {
+ipcMain.handle("login-with-google", async () => {
   const { codeVerifier, codeChallenge } = generatePKCE();
 
   const authParams = new URLSearchParams({
     client_id: CLERK_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
-    response_type: 'code',
-    scope: 'openid email profile',
+    response_type: "code",
+    scope: "openid email profile",
     code_challenge: codeChallenge,
-    code_challenge_method: 'S256'
+    code_challenge_method: "S256",
   });
   const authUrl = `${CLERK_AUTHORIZE_URL}?${authParams.toString()}`;
 
-  openUrlInBrowser(authUrl);
-
   const appExpress = express();
+  // Salud para depuración rápida
+  appExpress.get("/health", (req, res) => res.status(200).send("ok"));
 
   return new Promise((resolve, reject) => {
     const server = appExpress.listen(36478, () => {
-      console.log('Listening for Clerk OAuth callback...');
+      console.log("Listening for Clerk OAuth callback on 127.0.0.1:36478...");
+      // Abrir el navegador SOLO cuando el servidor ya está escuchando
+      openUrlInBrowser(authUrl);
     });
 
-    appExpress.get('/callback', async (req, res) => {
+    appExpress.get("/callback", async (req, res) => {
       const code = req.query.code;
       if (!code) {
-        res.status(400).send('Login failed: no code received.');
+        res.status(400).send("Login failed: no code received.");
         server.close();
-        return reject('No code received');
+        return reject("No code received");
       }
 
       try {
         const tokenParams = new URLSearchParams({
-          grant_type: 'authorization_code',
+          grant_type: "authorization_code",
           code: code.toString(),
           client_id: CLERK_CLIENT_ID,
           client_secret: CLERK_CLIENT_SECRET,
           redirect_uri: REDIRECT_URI,
-          code_verifier: codeVerifier
+          code_verifier: codeVerifier,
         });
 
         const tokenResp = await fetch(CLERK_TOKEN_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: tokenParams
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: tokenParams,
         });
 
         if (!tokenResp.ok) {
           const t = await tokenResp.text();
-          console.error('Clerk token exchange failed:', tokenResp.status, t);
-          res.status(500).send('Login failed at token exchange.');
+          console.error("Clerk token exchange failed:", tokenResp.status, t);
+          res.status(500).send("Login failed at token exchange.");
           server.close();
           return reject(`Token exchange failed: ${tokenResp.status}`);
         }
 
         const tokenData = await tokenResp.json();
-        const accessToken = tokenData.access_token || '';
-        const refreshToken = tokenData.refresh_token || '';
-        const idToken = tokenData.id_token || '';
+        const accessToken = tokenData.access_token || "";
+        const refreshToken = tokenData.refresh_token || "";
+        const idToken = tokenData.id_token || "";
 
         try {
           // Persist tokens for renderer
-          store.set(constants.ACCESS_TOKEN_STORE_KEY, accessToken || idToken || '');
-          if (refreshToken) store.set(constants.REFRESH_TOKEN_STORE_KEY, refreshToken);
-          process.env.NEURALAGENT_USER_ACCESS_TOKEN = accessToken || idToken || '';
+          store.set(
+            constants.ACCESS_TOKEN_STORE_KEY,
+            accessToken || idToken || ""
+          );
+          if (refreshToken)
+            store.set(constants.REFRESH_TOKEN_STORE_KEY, refreshToken);
+          process.env.NEURALAGENT_USER_ACCESS_TOKEN =
+            accessToken || idToken || "";
         } catch (e) {
-          console.error('Failed to persist Clerk tokens:', e);
+          console.error("Failed to persist Clerk tokens:", e);
         }
 
         // Optional: fetch basic profile
         try {
-          const uiResp = await fetch(CLERK_USERINFO_URL, { headers: { Authorization: `Bearer ${accessToken}` } });
+          const uiResp = await fetch(CLERK_USERINFO_URL, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
           if (uiResp.ok) {
             const profile = await uiResp.json();
-            console.log('Clerk user:', profile && (profile.email || profile.email_verified || profile.sub));
+            console.log(
+              "Clerk user:",
+              profile &&
+                (profile.email || profile.email_verified || profile.sub)
+            );
           }
         } catch {}
 
-        res.send('Login successful! You can close this window.');
+        res.send("Login successful! You can close this window.");
         server.close();
 
         // Notify renderer side that tokens are available
-        try { mainWindow?.webContents?.send('arkaios-auth-success'); } catch {}
+        try {
+          mainWindow?.webContents?.send("arkaios-auth-success");
+        } catch {}
 
         resolve({ accessToken, refreshToken, idToken });
       } catch (err) {
-        console.error('Clerk OAuth error:', err);
-        res.status(500).send('Login failed due to internal error.');
+        console.error("Clerk OAuth error:", err);
+        res.status(500).send("Login failed due to internal error.");
         server.close();
         reject(err?.message || err);
       }
@@ -649,122 +767,130 @@ ipcMain.handle('login-with-google', async () => {
 
 const createAppMenu = () => {
   let neuralAgentSubmenu = [];
-  const isWindows = process.platform === 'win32';
+  const isWindows = process.platform === "win32";
   if (isWindows) {
     neuralAgentSubmenu.push(
       {
-        label: 'Background Mode Authentication',
+        label: "Background Mode Authentication",
         click: () => {
-          if ((aiagentProcess && !aiagentProcess.killed) || (bgAuthProcess && !bgAuthProcess.killed)) {
+          if (
+            (aiagentProcess && !aiagentProcess.killed) ||
+            (bgAuthProcess && !bgAuthProcess.killed)
+          ) {
             return;
           }
           launchBackgroundAuthWindow();
         },
       },
-      { type: 'separator' }
+      { type: "separator" }
     );
   }
   neuralAgentSubmenu.push(
     {
-      label: 'Logout',
+      label: "Logout",
       click: () => {
         if (overlayWindow) {
           overlayWindow.close();
         }
-        mainWindow?.webContents.send('trigger-logout');
+        mainWindow?.webContents.send("trigger-logout");
       },
     },
-    { type: 'separator' },
+    { type: "separator" },
     {
-      label: 'Quit',
-      role: 'quit'
-    },
+      label: "Quit",
+      role: "quit",
+    }
   );
   const template = [
     {
-      label: 'NeuralAgent',
+      label: "NeuralAgent",
       submenu: neuralAgentSubmenu,
     },
     {
-      label: 'Edit',
+      label: "Edit",
       submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectall' }
-      ]
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectall" },
+      ],
     },
     {
-      label: 'View',
+      label: "View",
       submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' }
-      ]
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
     },
     {
-      label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'close' }
-      ]
-    }
+      label: "Window",
+      submenu: [{ role: "minimize" }, { role: "close" }],
+    },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 };
 
 function startBackgroundAuthServices() {
-  bgAuthProcess = spawn('wsl', ['-d', 'NeuralOS', '--', 'bash', '/agent/background_mode_authentication.sh']);
+  bgAuthProcess = spawn("wsl", [
+    "-d",
+    "NeuralOS",
+    "--",
+    "bash",
+    "/agent/background_mode_authentication.sh",
+  ]);
 
-  bgAuthProcess.stdout.on('data', data => {
+  bgAuthProcess.stdout.on("data", (data) => {
     console.log(`[BG Auth]: ${data.toString()}`);
   });
 
-  bgAuthProcess.stderr.on('data', data => {
+  bgAuthProcess.stderr.on("data", (data) => {
     console.error(`[BG Auth ERROR]: ${data.toString()}`);
   });
 }
 
 function cleanupBackgroundAuthServices() {
   try {
-    execSync('wsl -d NeuralOS -- bash /agent/background_mode_authentication_cleanup.sh');
-    console.log('[BG Auth]: Cleanup script executed.');
+    execSync(
+      "wsl -d NeuralOS -- bash /agent/background_mode_authentication_cleanup.sh"
+    );
+    console.log("[BG Auth]: Cleanup script executed.");
   } catch (err) {
-    console.error('[BG Auth]: Cleanup failed:', err);
+    console.error("[BG Auth]: Cleanup failed:", err);
   }
 
   if (bgAuthProcess) {
     if (!bgAuthProcess.killed) {
-      bgAuthProcess.kill('SIGKILL');
+      bgAuthProcess.kill("SIGKILL");
     }
   }
   bgAuthProcess = null;
 }
 
 function cleanupBGAgent() {
-  const isWindows = process.platform === 'win32';
+  const isWindows = process.platform === "win32";
   if (!isWindows) {
     return;
   }
   try {
-    execSync('wsl -d NeuralOS -- bash /agent/stop_bg_agent.sh');
-    console.log('[BG Agent]: Cleanup script executed.');
+    execSync("wsl -d NeuralOS -- bash /agent/stop_bg_agent.sh");
+    console.log("[BG Agent]: Cleanup script executed.");
   } catch (err) {
-    console.error('[BG Agent]: Cleanup failed:', err);
+    console.error("[BG Agent]: Cleanup failed:", err);
   }
 
   if (aiagentProcess) {
     if (!aiagentProcess.killed) {
-      aiagentProcess.kill('SIGKILL');
+      aiagentProcess.kill("SIGKILL");
     }
   }
 }
@@ -774,13 +900,17 @@ function waitForNoVNCPortReady(port, timeout = 10000, interval = 300) {
 
   return new Promise((resolve, reject) => {
     const check = () => {
-      const req = http.get({ hostname: '127.0.0.1', port, path: '/', timeout: 1000 }, (res) => {
-        res.destroy();
-        resolve(true); // Port is ready
-      });
+      const req = http.get(
+        { hostname: "127.0.0.1", port, path: "/", timeout: 1000 },
+        (res) => {
+          res.destroy();
+          resolve(true); // Port is ready
+        }
+      );
 
-      req.on('error', (err) => {
-        if (Date.now() > deadline) return reject(new Error('Timed out waiting for noVNC'));
+      req.on("error", (err) => {
+        if (Date.now() > deadline)
+          return reject(new Error("Timed out waiting for noVNC"));
         setTimeout(check, interval);
       });
 
@@ -801,28 +931,37 @@ function launchBackgroundAuthWindow() {
       backgroundAuthWindow = new BrowserWindow({
         width: 1350,
         height: 780,
-        title: 'NeuralAgent Background Auth',
-        icon: path.join(__dirname, 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
+        title: "NeuralAgent Background Auth",
+        icon: path.join(
+          __dirname,
+          "assets",
+          process.platform === "win32" ? "icon.ico" : "icon.png"
+        ),
         webPreferences: {
           contextIsolation: true,
           nodeIntegration: false,
-          preload: path.join(__dirname, 'electron', 'preload.js'),
+          preload: path.join(__dirname, "electron", "preload.js"),
         },
       });
 
       const reactURL = isDev
-        ? 'http://localhost:6763/#/background-auth'
-        : `file://${path.join(__dirname, 'neuralagent-app', 'build', 'index.html')}#/background-auth`;
+        ? "http://localhost:6763/#/background-auth"
+        : `file://${path.join(
+            __dirname,
+            "neuralagent-app",
+            "build",
+            "index.html"
+          )}#/background-auth`;
 
       backgroundAuthWindow.loadURL(reactURL);
 
-      backgroundAuthWindow.on('closed', () => {
+      backgroundAuthWindow.on("closed", () => {
         cleanupBackgroundAuthServices();
         backgroundAuthWindow = null;
       });
     })
     .catch((err) => {
-      console.error('❌ noVNC failed to start:', err);
+      console.error("❌ noVNC failed to start:", err);
       cleanupBackgroundAuthServices();
     });
 }
@@ -835,27 +974,36 @@ function launchBackgroundAgentWindow() {
       bgAgentWindow = new BrowserWindow({
         width: 1350,
         height: 780,
-        title: 'NeuralAgent Background Task',
-        icon: path.join(__dirname, 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
+        title: "NeuralAgent Background Task",
+        icon: path.join(
+          __dirname,
+          "assets",
+          process.platform === "win32" ? "icon.ico" : "icon.png"
+        ),
         webPreferences: {
           contextIsolation: true,
           nodeIntegration: false,
-          preload: path.join(__dirname, 'electron', 'preload.js'),
+          preload: path.join(__dirname, "electron", "preload.js"),
         },
       });
 
       const reactURL = isDev
-        ? 'http://localhost:6763/#/background-task'
-        : `file://${path.join(__dirname, 'neuralagent-app', 'build', 'index.html')}#/background-task`;
+        ? "http://localhost:6763/#/background-task"
+        : `file://${path.join(
+            __dirname,
+            "neuralagent-app",
+            "build",
+            "index.html"
+          )}#/background-task`;
 
       bgAgentWindow.loadURL(reactURL);
 
-      bgAgentWindow.on('closed', () => {
+      bgAgentWindow.on("closed", () => {
         bgAgentWindow = null;
       });
     })
     .catch((err) => {
-      console.error('noVNC failed to start:', err);
+      console.error("noVNC failed to start:", err);
     });
 }
 
@@ -864,39 +1012,48 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1050,
     height: 750,
-    icon: path.join(__dirname, 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
+    icon: path.join(
+      __dirname,
+      "assets",
+      process.platform === "win32" ? "icon.ico" : "icon.png"
+    ),
     webPreferences: {
-      preload: path.join(__dirname, 'electron', 'preload.js'),
+      preload: path.join(__dirname, "electron", "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
 
   const startURL = isDev
-    ? 'http://localhost:6763'
+    ? "http://localhost:6763"
     : url.format({
-        pathname: path.join(__dirname, 'neuralagent-app', 'build', 'index.html'),
-        protocol: 'file:',
+        pathname: path.join(
+          __dirname,
+          "neuralagent-app",
+          "build",
+          "index.html"
+        ),
+        protocol: "file:",
         slashes: true,
       });
 
   mainWindow.loadURL(startURL);
 
-  mainWindow.on('close', async (e) => {
+  mainWindow.on("close", async (e) => {
     if (readyToClose) return;
 
     e.preventDefault();
     if (mainWindow?.webContents) {
-      mainWindow?.webContents.send('trigger-cancel-all-tasks');
+      mainWindow?.webContents.send("trigger-cancel-all-tasks");
     }
 
-    ipcMain.once('cancel-all-tasks-done', () => {
+    ipcMain.once("cancel-all-tasks-done", () => {
       readyToClose = true;
       mainWindow.close();
     });
   });
 
-  mainWindow.on('closed', () => {
+  mainWindow.on("closed", () => {
     mainWindow = null;
 
     if (overlayWindow && !overlayWindow.isDestroyed()) {
@@ -938,7 +1095,7 @@ function createOverlayWindow() {
     resizable: false,
     skipTaskbar: true,
     webPreferences: {
-      preload: path.join(__dirname, 'electron', 'preload.js'),
+      preload: path.join(__dirname, "electron", "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -947,16 +1104,21 @@ function createOverlayWindow() {
   try {
     overlayWindow.setContentProtection(true);
   } catch (e) {
-    console.warn('[Overlay] setContentProtection not available:', e);
+    console.warn("[Overlay] setContentProtection not available:", e);
   }
 
   const overlayURL = isDev
-    ? 'http://localhost:6763/#/overlay'
-    : `file://${path.join(__dirname, 'neuralagent-app', 'build', 'index.html')}#/overlay`;
+    ? "http://localhost:6763/#/overlay"
+    : `file://${path.join(
+        __dirname,
+        "neuralagent-app",
+        "build",
+        "index.html"
+      )}#/overlay`;
 
   overlayWindow.loadURL(overlayURL);
 
-  overlayWindow.on('closed', () => {
+  overlayWindow.on("closed", () => {
     overlayWindow = null;
   });
 }
@@ -983,7 +1145,7 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on("second-instance", () => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.focus();
@@ -992,8 +1154,8 @@ if (!gotLock) {
 }
 
 app.whenReady().then(() => {
-  const devIconPath = path.join(__dirname, 'assets', 'icon.png');
-  if (process.platform === 'darwin' && isDev) {
+  const devIconPath = path.join(__dirname, "assets", "icon.png");
+  if (process.platform === "darwin" && isDev) {
     try {
       const img = nativeImage.createFromPath(devIconPath);
       if (!img.isEmpty()) app.dock.setIcon(img);
@@ -1002,18 +1164,18 @@ app.whenReady().then(() => {
   ensureDeviceId();
   createWindow();
   setupAutoUpdater(mainWindow);
-  
+
   setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(err => {
-      console.log('Auto-update check failed:', err);
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.log("Auto-update check failed:", err);
     });
   }, 5000);
-  
+
   if (store.get(constants.ACCESS_TOKEN_STORE_KEY)) {
     createOverlayWindow();
   }
   createAppMenu();
-  app.on('activate', () => {
+  app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
       createOverlayWindow();
@@ -1021,7 +1183,7 @@ app.whenReady().then(() => {
   });
 });
 
-app.on('before-quit', () => {
+app.on("before-quit", () => {
   if (overlayHideTimeout) {
     clearTimeout(overlayHideTimeout);
     overlayHideTimeout = null;
@@ -1030,29 +1192,35 @@ app.on('before-quit', () => {
   app.isQuitting = true;
 });
 
-app.on('window-all-closed', () => {
+app.on("window-all-closed", () => {
   if (aiagentProcess && !aiagentProcess.killed) {
-    kill(aiagentProcess.pid, 'SIGKILL', (err) => {
-      if (err) console.error('❌ Failed to kill agent:', err);
-      else console.log('[Agent stopped on app exit]');
+    kill(aiagentProcess.pid, "SIGKILL", (err) => {
+      if (err) console.error("❌ Failed to kill agent:", err);
+      else console.log("[Agent stopped on app exit]");
     });
   }
-  if (process.platform !== 'darwin' || app.isQuitting) app.quit();
+  if (process.platform !== "darwin" || app.isQuitting) app.quit();
 });
 // Capturar excepciones globales del proceso principal y recuperar si provienen de Conf/electron-store.
-process.on('uncaughtException', (err) => {
+process.on("uncaughtException", (err) => {
   try {
-    const msg = String(err?.message || err || '');
-    const stk = String(err?.stack || '');
-    const related = /conf\b|electron-store/i.test(stk) || /config\.json/i.test(stk + msg);
+    const msg = String(err?.message || err || "");
+    const stk = String(err?.stack || "");
+    const related =
+      /conf\b|electron-store/i.test(stk) || /config\.json/i.test(stk + msg);
     if (related) {
-      const userData = app.getPath('userData');
-      const cfg = path.join(userData, 'config.json');
+      const userData = app.getPath("userData");
+      const cfg = path.join(userData, "config.json");
       try {
-        const backup = cfg + '.uncaught.' + Date.now();
+        const backup = cfg + ".uncaught." + Date.now();
         if (fs.existsSync(cfg)) fs.copyFileSync(cfg, backup);
-        fs.writeFileSync(cfg, '{}', 'utf8');
-        console.error('[Store] uncaughtException: repaired', cfg, 'backup:', backup);
+        fs.writeFileSync(cfg, "{}", "utf8");
+        console.error(
+          "[Store] uncaughtException: repaired",
+          cfg,
+          "backup:",
+          backup
+        );
       } catch {}
     }
   } catch {}
