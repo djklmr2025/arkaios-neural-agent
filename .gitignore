@@ -1,0 +1,14 @@
+.env
+NeuralAgent.exe
+Uninstall NeuralAgent.exe
+*.dll
+*.bin
+*.pak
+*.json.invalid.*
+locales/
+resources/neuralagent-app/build/
+v8_context_snapshot.bin
+snapshot_blob.bin
+rs(s
+ps(s
+
