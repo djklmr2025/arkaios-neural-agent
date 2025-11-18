@@ -65,6 +65,9 @@ Regresa a la pantalla principal y escribe:
 Abre la calculadora y suma 128 + 256
 ¡Y listo! Has ejecutado tu primera automatización.
 
+### 🔧 Integración con IA Arkaios / Puter (self‑hosted)
+Si quieres ejecutar la orquestadora sin límites ni costes por uso, autohospeda tu propia instancia (por ejemplo, con [IA-ARKAIOS](https://github.com/djklmr2025/IA-ARKAIOS)) y genera tus propias claves. Consulta la guía detallada en [INTEGRATION.md](INTEGRATION.md) para configurar tus variables de entorno y proteger tus secretos.
+
 💡 Ejemplos de Uso
 El poder de Arkaios crece con tu imaginación. Aquí algunas ideas:
 
