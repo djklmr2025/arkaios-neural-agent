@@ -1,4 +1,3 @@
-![Proyecto arkaios-neural-agent](https://raw.githubusercontent.com/djklmr2025/arkaios-neural-agent/main/assets/arkaios_spin_bar.png)
 <div align="center">
   <img src="assets/arkaios_logo.svg" alt="Arkaios Logo" width="120" />
   <h1>Arkaios Neural Agent</h1>
