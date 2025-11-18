@@ -3,7 +3,6 @@
   <h1>Arkaios Neural Agent</h1>
   <p><strong>Tu PC, Sobrealimentado.</strong></p>
   <p>
-    <a href="https://discord.gg/YOUR_INVITE_LINK">
       <img src="https://img.shields.io/discord/YOUR_SERVER_ID?label=Únete%20a%20nuestra%20comunidad&logo=discord&color=5865F2&style=for-the-badge" alt="Discord">
     </a>
     <a href="https://github.com/djklmr2025/arkaios-neural-agent-main/releases">
