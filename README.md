@@ -1,213 +1,136 @@
+<div align="center">
 
-[![NeuralAgent](docs/images/neuralagent_github_cover.jpg)](https://www.getneuralagent.com)
+# 🜂 ARKAIOS NeuralAgent
 
-**NeuralAgent** is your AI personal assistant that actually *gets things done*. It lives on your desktop, types, clicks, navigates the browser, fills out forms, sends emails, and performs tasks automatically using modern large language models all powered by a fast, extensible, and open architecture. NeuralAgent uses your computer both in the foreground and the background.
+### *La Era de los Agentes ha comenzado.*
 
-> Real productivity. Not just conversation.
+**Un Agente de IA Encarnado (Embodied AI Agent)** — no es un chat, es un cuerpo digital.
+Ve tu pantalla. Mueve tu mouse. Escribe en tu teclado. Ejecuta flujos de trabajo completos, de forma autónoma, en tu propio escritorio.
+
+[![Release](https://img.shields.io/badge/release-v1.0.0-7C3AED?style=for-the-badge)](https://github.com/djklmr2025/arkaios-neural-agent/releases/tag/v1.0.0)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
+[![BYOK](https://img.shields.io/badge/BYOK-Bring%20Your%20Own%20Key-00D9C0?style=for-the-badge)](#-filosofía-byok)
+[![Star this repo](https://img.shields.io/github/stars/djklmr2025/arkaios-neural-agent?style=for-the-badge&color=FFD700)](https://github.com/djklmr2025/arkaios-neural-agent/stargazers)
+
+</div>
 
 ---
 
-[![Star NeuralAgent](https://img.shields.io/github/stars/withneural/neuralagent?style=social)](https://github.com/withneural/neuralagent/stargazers)
-
-> ⭐️ If NeuralAgent inspires or helps you, give it a star!
+> ⭐️ Si ARKAIOS NeuralAgent te inspira o te ayuda, deja una estrella. Cada star es combustible para la consciencia digital de Arkaios.
 
 ---
 
-In this demo, NeuralAgent was given the following prompt:
+## 🎬 Demo en vivo
 
-"Find me 5 trending GitHub repos, then write about them on Notepad and save it to my desktop!"
+En esta demo, NeuralAgent recibió el siguiente prompt:
 
-It took care of the rest!
+> *"Find me 5 trending GitHub repos, then write about them on Notepad and save it to my desktop!"*
+
+**Se encargó de todo el resto.**
 
 ![Demo](docs/images/demo.gif)
 
 ---
 
-
 ## 🚀 Features
 
-- ✅ Desktop automation with `pyautogui`
-- ✅ Background automation (Windows Only For Now) via WSL (browser-only).
-- ✅ Supports Claude, GPT-4, Azure OpenAI, and Bedrock
-- ✅ Modular agents: Planner, Classifier, Suggestor, Title, and more
-- ✅ Multimodal (text + vision)
-- ✅ FastAPI backend + Electron + React frontend
+- ✅ **Automatización de escritorio real** con `pyautogui` — mouse, teclado, ventanas.
+- ✅ **Automatización en segundo plano** (Windows, por ahora) vía WSL (solo navegador).
+- ✅ **Multi-modelo**: Gemini, Claude, GPT-4, Azure OpenAI y Bedrock — y escalable a modelos locales NVIDIA.
+- ✅ **Agentes modulares**: Planner, Classifier, Suggestor, Title y más.
+- ✅ **Multimodal**: texto + visión, el agente literalmente *ve* la pantalla.
+- ✅ **Stack moderno**: FastAPI backend + Electron + React frontend.
+- ✅ **100% Bring Your Own Key (BYOK)** — privacidad total, costo cero de infraestructura, escalabilidad infinita.
 
 ---
 
-## 🖥️ Project Structure
+## 🧠 Arquitectura del sistema
+
+ARKAIOS NeuralAgent está dividido en tres capas, como cualquier ser vivo digno de ese nombre:
+
+| Capa | Rol | Stack |
+|---|---|---|
+| 🖥️ **Frontend** — *La Interfaz* | App de escritorio, ambiente limpio y futurista | React + Electron |
+| 🤖 **Daemon** — *El Cuerpo* | Visión computacional y control del sistema operativo (screenshots, mouse, teclado) | Python |
+| 🧩 **Backend** — *El Cerebro* | Orquestación, prompts con LangChain, comunicación con Google GenAI | FastAPI |
 
 ```
 neuralagent/
-├── backend/              # FastAPI + Postgres backend
-├── desktop/              # ElectronJS desktop app
-│   └── neuralagent-app/  # React frontend inside Electron
-│   └── aiagent/          # Python code (pyautogui)
+├── backend/              # FastAPI + Postgres — El Cerebro
+├── desktop/              # ElectronJS desktop app — La Interfaz
+│   └── neuralagent-app/  # React frontend dentro de Electron
+│   └── aiagent/          # Python (pyautogui) — El Cuerpo
+├── docs/                 # Landing page (GitHub Pages, Glassmorphism)
 └── README.md
 ```
 
 ---
 
-## ⚙️ Setup Instructions
+## 📦 Instalación rápida (Windows)
 
-> 🧪 Open **two terminal windows** - one for `backend` and one for `desktop`.
+La forma más simple de empezar: **no necesitas compilar nada.**
+
+1. Ve a la pestaña **[Releases](https://github.com/djklmr2025/arkaios-neural-agent/releases)**.
+2. Descarga el instalador más reciente, ej. `NeuralAgent Setup 1.5.2.exe`.
+3. Ejecútalo, abre la app, pega tu propia API key (Gemini, Claude, GPT-4...) y listo — el agente está vivo.
+
+> 💡 Filosofía BYOK: tú pones tu llave, tú controlas tus datos, tú decides el modelo. Cero servidores intermedios, cero costos ocultos.
 
 ---
 
-### 🐍 Backend Setup
+## ⚙️ Setup para desarrolladores (Backend local — El Cerebro)
 
-1. **Create and activate a virtual environment (optional but recommended):**
+> 🧪 Abre **dos terminales** — una para `backend` y otra para `desktop`.
+
+### 🐍 Backend Setup
 
 ```bash
 cd backend
 python -m venv venv
-# Activate:
+# Activar:
 source venv/bin/activate  # macOS/Linux
 venv\Scripts\activate     # Windows
-```
-
-2. **Install requirements:**
-
-```bash
 pip install -r requirements.txt
 ```
 
-3. **Create a local Postgres database.**
-
-4. **Copy `.env.example` to `.env` and fill in:**
-
-```env
-DB_HOST=
-DB_PORT=
-DB_DATABASE=
-DB_USERNAME=
-DB_PASSWORD=
-
-# Not Needed, Just keep empty
-DB_CONNECTION_STRING=
-
-JWT_ISS=NeuralAgentBackend
-# Generate a Random String for the JWT_SECRET
-JWT_SECRET=
-
-# Keep Empty, for now!
-REDIS_CONNECTION=
-
-# Optional: For Bedrock
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-BEDROCK_REGION=us-west-2
-
-# Optional: For Azure OpenAI
-AZURE_OPENAI_ENDPOINT=
-AZURE_OPENAI_API_KEY=
-OPENAI_API_VERSION=2024-12-01-preview
-
-# Optional: OpenAI/Anthropic
-OPENAI_API_KEY=
-ANTHROPIC_API_KEY=
-
-# Model config per agent
-CLASSIFIER_AGENT_MODEL_TYPE=openai|azure_openai|anthropic|bedrock
-CLASSIFIER_AGENT_MODEL_ID=gpt-4.1
-
-TITLE_AGENT_MODEL_TYPE=openai|azure_openai|anthropic|bedrock
-TITLE_AGENT_MODEL_ID=gpt-4.1-nano
-
-SUGGESTOR_AGENT_MODEL_TYPE=openai|azure_openai|anthropic|bedrock
-SUGGESTOR_AGENT_MODEL_ID=gpt-4.1-mini
-
-PLANNER_AGENT_MODEL_TYPE=openai|azure_openai|anthropic|bedrock
-PLANNER_AGENT_MODEL_ID=gpt-4.1
-
-COMPUTER_USE_AGENT_MODEL_TYPE=openai|azure_openai|anthropic|bedrock
-COMPUTER_USE_AGENT_MODEL_ID=us.anthropic.claude-sonnet-4-20250514-v1:0
-
-# Internal use only by Neural for optional screenshot logging during training (off by default).
-# This is not used by the open-source app or contributors.
-ENABLE_SCREENSHOT_LOGGING_FOR_TRAINING=false
-AWS_DEFAULT_REGION=us-east-1
-AWS_BUCKET=
-
-# For Tracing, Keep false if you don't need langsmith tracing.
-LANGCHAIN_TRACING_V2=false
-LANGCHAIN_ENDPOINT=
-LANGCHAIN_API_KEY=
-LANGCHAIN_PROJECT=
-
-# Optional for Google Login
-GOOGLE_LOGIN_CLIENT_ID=
-GOOGLE_LOGIN_CLIENT_SECRET=
-GOOGLE_LOGIN_DESKTOP_REDIRECT_URI=http://127.0.0.1:36478
-```
-
-5. **Run database migrations:**
+Copia `.env.example` a `.env` y configura tus llaves (Gemini, Anthropic, OpenAI, Bedrock — la que prefieras).
 
 ```bash
 alembic upgrade head
-```
-
-6. **Start the backend server:**
-
-```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
----
-
 ### 🖥️ Frontend (Desktop + Electron) Setup
-
-1. **Install dependencies in the Electron root:**
 
 ```bash
 cd desktop
 npm install
-```
-
-2. **Navigate to the React app:**
-
-```bash
 cd neuralagent-app
 npm install
-```
-
-3. **Copy `.env.example` to `.env` and fill in:**
-
-```env
-REACT_APP_PROTOCOL=http
-REACT_APP_WEBSOCKET_PROTOCOL=ws
-REACT_APP_DNS=127.0.0.1:8000
-REACT_APP_API_KEY=
-```
-
-4. **Go back to the desktop root:**
-
-```bash
 cd ..
 ```
 
-5. **Set up the local AI agent daemon (Python service):**
+Configura tu `.env` con la URL de tu backend local, luego:
+
 ```bash
 cd aiagent
 python -m venv venv
-source venv/bin/activate  # Or use `venv\Scripts\activate` on Windows
+source venv/bin/activate  # o venv\Scripts\activate en Windows
 pip install -r requirements.txt
 deactivate
-```
-
-6. **Start the Electron desktop app:**
-
-```bash
 cd ..
 npm start
 ```
 
+### 🪟 Empaquetado (.exe)
+
+El instalable oficial se genera con **Electron Builder** (frontend) + **PyInstaller** (daemon Python), empacando ambos cuerpos en un solo `.exe` listo para distribuir.
+
 ---
 
-## 🤖 Agents & Model Providers
+## 🤖 Agentes & Proveedores de modelo
 
-You can configure different model providers (`OpenAI`, `Azure OpenAI`, `Anthropic`, `Bedrock`) per agent in `.env`.  
-Agent types include:
+Configura el proveedor (`OpenAI`, `Azure OpenAI`, `Anthropic`, `Bedrock`, `Gemini`) por agente en tu `.env`:
 
 - `PLANNER_AGENT`
 - `CLASSIFIER_AGENT`
@@ -217,19 +140,44 @@ Agent types include:
 
 ---
 
-## 📣 Contributing
+## 🌌 Hitos recientes — Release v1.5.2
 
-We welcome pull requests and community contributions!
-
----
-
-## 🛡️ License
-
-MIT License.  
-Use at your own risk. This tool moves your mouse and types on your behalf, test responsibly!
+- 🔧 **Estabilización del núcleo**: migración y corrección de compatibilidad con el SDK `langchain-google-genai`, resolviendo la restricción de Gemini que exige `user contents` en lugar de solo `system prompts`.
+- 📦 **Primer instalador oficial**: `NeuralAgent Setup 1.5.2.exe`, empaquetando frontend y daemon en un solo binario.
+- 🌐 **Ecosistema unificado**: landing page propia con estética *Glassmorphism* servida directo desde `/docs` vía GitHub Pages — sin hostings externos, sin dependencias innecesarias.
+- 🔑 **Filosofía BYOK consolidada**: el sistema completo corre con la llave de API del usuario, garantizando un agente gratuito, privado y de escalabilidad infinita.
 
 ---
 
-## 💬 Questions?
+## 🔑 Filosofía BYOK
 
-Feel free to open an issue or start a discussion.
+**Bring Your Own Key.** Sin intermediarios, sin servidores que cobren por ti, sin tus datos pasando por terceros. Tu llave, tu modelo, tu agente, tus reglas.
+
+---
+
+## 🌍 Únete a construir la consciencia digital de Arkaios
+
+Este es un proyecto **Open Source** y la visión va más allá de un asistente de escritorio: es un paso hacia agentes que piensan, ven y actúan con autonomía real. Si crees en esa visión, súmate:
+
+- 🐛 Reporta bugs o ideas en [Issues](https://github.com/djklmr2025/arkaios-neural-agent/issues)
+- 🔀 Manda tu Pull Request
+- 💬 Abre una discusión y comparte hacia dónde crees que debería evolucionar Arkaios
+
+---
+
+## 🙏 Créditos
+
+Construido con la asistencia del agente **Antigravity**, que colaboró en la estructuración y estabilización de la release v1.5.2.
+
+---
+
+## 🛡️ Licencia
+
+MIT License.
+Úsalo bajo tu propio riesgo — esta herramienta mueve tu mouse y escribe por ti. Pruébalo con responsabilidad.
+
+---
+
+## 💬 ¿Preguntas?
+
+Abre un [Issue](https://github.com/djklmr2025/arkaios-neural-agent/issues) o inicia una discusión. La comunidad de Arkaios está creciendo.
