@@ -1,0 +1,11 @@
+**/venv/
+**/.venv/
+**/node_modules/
+**/__pycache__/
+*.db
+*.backup
+*.backup.gz
+*.env
+.env
+*.mp4
+*.zip
