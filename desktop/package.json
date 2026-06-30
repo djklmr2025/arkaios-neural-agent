@@ -1,6 +1,6 @@
 {
   "name": "neuralagent-desktop",
-  "version": "1.5.2",
+  "version": "1.5.5",
   "description": "NeuralAgent Electron Desktop Application",
   "license": "ISC",
   "author": "",
@@ -37,6 +37,10 @@
       {
         "from": "agent_build/suggestor.exe",
         "to": "suggestor.exe"
+      },
+      {
+        "from": "agent_build/cerebro.exe",
+        "to": "cerebro.exe"
       }
     ],
     "mac": {

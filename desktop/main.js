@@ -206,12 +206,11 @@ ipcMain.on('launch-ai-agent', async (_, baseURL, threadId, backgroundMode) => {
   store.set(constants.LAST_BACKGROUND_MODE_VALUE, backgroundMode.toString());
 
   if (!backgroundMode) {
-    const pythonPath = isWindows 
-      ? path.join(__dirname, 'aiagent', 'venv', 'Scripts', 'python.exe')
-      : path.join(__dirname, 'aiagent', 'venv', 'bin', 'python');
-    const scriptPath = path.join(__dirname, 'aiagent', 'main.py');
+    const agentPath = isDev
+      ? path.join(__dirname, 'agent_build', isWindows ? 'agent.exe' : 'agent')
+      : path.join(process.resourcesPath, isWindows ? 'agent.exe' : 'agent');
 
-    aiagentProcess = spawn(pythonPath, [scriptPath], {
+    aiagentProcess = spawn(agentPath, [], {
       env: {
         ...process.env,
         NEURALAGENT_API_URL: baseURL,
@@ -220,18 +219,6 @@ ipcMain.on('launch-ai-agent', async (_, baseURL, threadId, backgroundMode) => {
         PYTHONUTF8: '1',
       },
     });
-
-    // const agentPath = isDev
-    // ? path.join(__dirname, 'agent_build', isWindows ? 'agent.exe' : 'agent')
-    // : path.join(process.resourcesPath, isWindows ? 'agent.exe' : 'agent');
-
-    // aiagentProcess = spawn(agentPath, [], {
-    //   env: {
-    //     NEURALAGENT_API_URL: baseURL,
-    //     NEURALAGENT_THREAD_ID: threadId,
-    //     NEURALAGENT_USER_ACCESS_TOKEN: store.get(constants.ACCESS_TOKEN_STORE_KEY),
-    //   },
-    // });
     mainWindow?.minimize();
   } else {
     // VERY IMPORTANT

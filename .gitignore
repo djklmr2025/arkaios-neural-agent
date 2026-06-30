@@ -9,3 +9,7 @@
 .env
 *.mp4
 *.zip
+backend/build/
+desktop/agent_build/
+desktop/dist/
+*.spec

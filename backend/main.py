@@ -10,8 +10,15 @@ from routers.aiagent.background import router as bg_mode_aiagent_router
 from utils.procedures import CustomError
 
 from dotenv import load_dotenv
-load_dotenv()
+import os
 
+app_data = os.getenv('LOCALAPPDATA') or os.getenv('APPDATA')
+if app_data:
+    api_keys_path = os.path.join(app_data, 'NeuralAgent', 'API_KEYS.env')
+    if os.path.exists(api_keys_path):
+        load_dotenv(dotenv_path=api_keys_path)
+
+load_dotenv()
 from sqlmodel import SQLModel
 from db.database import engine
 # Import all models so SQLModel knows about them before create_all

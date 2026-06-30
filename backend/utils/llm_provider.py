@@ -8,7 +8,13 @@ from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.language_models.chat_models import BaseChatModel
 
-load_dotenv()  # Load env variables from .env
+import os
+app_data = os.getenv('LOCALAPPDATA') or os.getenv('APPDATA')
+if app_data:
+    api_keys_path = os.path.join(app_data, 'NeuralAgent', 'API_KEYS.env')
+    if os.path.exists(api_keys_path):
+        load_dotenv(dotenv_path=api_keys_path)
+load_dotenv()
 
 def get_llm(agent: str, temperature: float = 0.0, max_tokens: int = None, thinking_enabled: bool = False) -> BaseChatModel:
     """
