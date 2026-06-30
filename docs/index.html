@@ -1,78 +1,361 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARKAIOS NeuralAgent | The Embodied AI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0B0E14;
-            color: #ffffff;
-            background-image: radial-gradient(circle at top right, rgba(45, 106, 255, 0.15) 0%, transparent 40%),
-                              radial-gradient(circle at bottom left, rgba(162, 59, 255, 0.15) 0%, transparent 40%);
-            background-attachment: fixed;
+    <title>Arkaios Neural Agent | Automatiza tu Flujo de Trabajo</title>
+    <link rel="icon" href="assets/arkaios_logo.svg" type="image/svg+xml">
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <link rel="stylesheet" href="style.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-cyan': '#00B8FF',
+                        'brand-blue': '#1D4ED8',
+                        'dark-bg': '#0A0A0A',
+                        'dark-card': '#121212',
+                        'dark-border': '#27272A',
+                    },
+                    animation: {
+                        'aurora': 'aurora 60s linear infinite',
+                    },
+                    keyframes: {
+                        aurora: {
+                            from: {
+                                backgroundPosition: '50% 50%, 50% 50%',
+                            },
+                            to: {
+                                backgroundPosition: '350% 50%, 350% 50%',
+                            },
+                        },
+                    },
+                }
+            }
         }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-        }
-        .gradient-text {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-    </style>
+    </script>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-between antialiased selection:bg-blue-500/30">
+<body class="bg-dark-bg text-gray-300 font-sans antialiased overflow-x-hidden">
 
-    <!-- Navigation -->
-    <nav class="w-full max-w-6xl mx-auto px-6 py-8 flex justify-between items-center z-10">
-        <div class="flex items-center gap-3">
-            <img src="images/neuralagent_logo.png" alt="ARKAIOS Logo" class="h-10 w-10 object-contain">
-            <span class="text-xl font-bold tracking-wide">ARKAIOS</span>
+
+    <div class="absolute top-0 left-0 w-full h-full -z-10 animate-aurora bg-[radial-gradient(125%_125%_at_50%_10%,#0A0A0A_40%,#1D4ED8_100%)]"></div>
+
+
+    <header class="fixed top-0 left-0 w-full z-50 backdrop-blur-sm bg-dark-bg/50 border-b border-dark-border/50">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="#" class="flex items-center gap-2">
+                <img src="assets/arkaios_logo.svg" alt="Arkaios Logo" class="w-8 h-8">
+                <span class="text-xl font-bold text-white">Arkaios</span>
+            </a>
+            <nav class="hidden md:flex items-center gap-6 text-sm">
+                <a href="#features" class="hover:text-brand-cyan transition-colors">Características</a>
+                <a href="#how-it-works" class="hover:text-brand-cyan transition-colors">Cómo Funciona</a>
+                <a href="#use-cases" class="hover:text-brand-cyan transition-colors">Casos de Uso</a>
+            </nav>
+            <a href="#download" class="hidden md:inline-block px-4 py-2 text-sm font-semibold bg-brand-cyan text-white rounded-lg hover:bg-opacity-90 transition-all transform hover:scale-105 cta-button">
+                Descargar Beta
+            </a>
         </div>
-        <a href="https://github.com/djklmr2025/arkaios-neural-agent" target="_blank" class="text-sm font-semibold text-gray-400 hover:text-white transition-colors duration-300">GitHub Repository</a>
-    </nav>
+    </header>
 
-    <!-- Main Hero -->
-    <main class="flex-grow flex flex-col items-center justify-center w-full px-4 text-center z-10 -mt-10">
-        <div class="glass-panel p-10 md:p-16 rounded-3xl max-w-4xl mx-auto transform hover:scale-[1.01] transition-transform duration-500">
-            <h1 class="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
-                Welcome to the <br/>
-                <span class="gradient-text">Embodied AI Era</span>
-            </h1>
-            <p class="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed">
-                ARKAIOS NeuralAgent no es solo una IA en una caja. Es tu primer agente autónomo local, con la capacidad de ver tu pantalla, mover tu mouse y ejecutar tareas físicas en tu entorno digital. Impulsado por Gemini.
-            </p>
-            
-            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                <a href="https://github.com/djklmr2025/arkaios-neural-agent/releases/latest" 
-                   class="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold rounded-full shadow-[0_0_20px_rgba(79,172,254,0.4)] hover:shadow-[0_0_30px_rgba(79,172,254,0.6)] transition-all duration-300 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                    Descargar para Windows (v1.5.2)
-                </a>
-                <a href="https://github.com/djklmr2025/arkaios-neural-agent" 
-                   class="px-8 py-4 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full border border-white/10 transition-all duration-300">
-                    Ver Código Fuente
-                </a>
+
+    <main>
+        <!-- Hero Section -->
+        <section id="hero" class="relative min-h-screen flex items-center justify-center text-center overflow-hidden pt-20">
+            <div class="container mx-auto px-6 z-10">
+                 <div class="bg-dark-border/50 text-brand-cyan/80 text-xs font-medium px-4 py-1.5 rounded-full inline-block mb-4 border border-dark-border">
+                    Tu PC, Sobrealimentado.
+                </div>
+                <h1 class="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-4 leading-tight">
+                    Automatiza tu flujo de trabajo.
+                    <span class="block text-brand-cyan">De verdad.</span>
+                </h1>
+                <p class="max-w-3xl mx-auto text-base md:text-lg text-gray-400 mb-8">
+                    Arkaios es un agente de IA de código abierto que ve tu pantalla y controla tu teclado y ratón para automatizar cualquier tarea en tu escritorio.
+                </p>
+                <div class="flex justify-center items-center gap-4 flex-wrap">
+                    <a href="#download" class="px-8 py-3 font-bold bg-brand-cyan text-white rounded-lg hover:bg-opacity-90 transition-all transform hover:scale-105 cta-button text-lg">
+                        Únete a la Beta
+                    </a>
+                    <a href="https://discord.gg/xtUxdxD7H" target="_blank" class="px-8 py-3 font-bold text-white bg-dark-card border border-dark-border rounded-lg hover:border-gray-600 hover:text-white transition-all transform hover:scale-105 flex items-center gap-2">
+                        <i data-lucide="discord"></i>
+                        Únete a Discord
+                    </a>
+                </div>
+                 <div id="demo-placeholder" class="max-w-4xl mx-auto mt-16 p-2 bg-dark-card/50 border border-dark-border rounded-xl shadow-2xl shadow-brand-blue/10 backdrop-blur-sm">
+                    <div class="aspect-video bg-black/50 rounded-lg flex items-center justify-center">
+                        <div class="text-gray-500 flex flex-col items-center gap-2">
+                            <i data-lucide="play-circle" class="w-16 h-16 opacity-30"></i>
+                            <span class="font-medium">Video de Demostración Próximamente</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <p class="text-sm text-gray-500 mt-6">* Completamente local, gratuito y sin suscripciones. Tú controlas la llave.</p>
-        </div>
+        </section>
+
+
+        <!-- Features Section -->
+        <section id="features" class="py-20 sm:py-32">
+            <div class="container mx-auto px-6">
+                <div class="text-center max-w-2xl mx-auto">
+                    <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Un compañero de IA que ve y actúa como tú.</h2>
+                    <p class="text-gray-400 text-lg">Arkaios te da el poder de automatizar cualquier cosa, combinando control total con la simplicidad del lenguaje natural.</p>
+                </div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mt-16">
+                    <div class="feature-card bg-dark-card border border-dark-border rounded-2xl p-8">
+                        <div class="p-3 bg-brand-blue/20 border border-brand-blue/30 rounded-lg inline-block mb-4">
+                            <i data-lucide="mouse-pointer-click" class="w-7 h-7 text-brand-cyan"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">Control Total del Escritorio</h3>
+                        <p class="text-gray-400">Ve más allá de los chatbots. Arkaios controla tus aplicaciones, clics y teclado para automatizar cualquier tarea.</p>
+                    </div>
+                    <div class="feature-card bg-dark-card border border-dark-border rounded-2xl p-8">
+                        <div class="p-3 bg-brand-blue/20 border border-brand-blue/30 rounded-lg inline-block mb-4">
+                            <i data-lucide="terminal-square" class="w-7 h-7 text-brand-cyan"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">Lenguaje Natural es Código</h3>
+                        <p class="text-gray-400">Si puedes decirlo, Arkaios puede hacerlo. Convierte tus ideas en acciones, sin escribir una sola línea de código.</p>
+                    </div>
+                    <div class="feature-card bg-dark-card border border-dark-border rounded-2xl p-8">
+                        <div class="p-3 bg-brand-blue/20 border border-brand-blue/30 rounded-lg inline-block mb-4">
+                           <i data-lucide="shield-check" class="w-7 h-7 text-brand-cyan"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">Personalizable y Privado</h3>
+                        <p class="text-gray-400">Usa el modelo de IA que prefieras y mantén el control total sobre tus datos y flujos de trabajo en tu máquina local.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- How It Works Section -->
+        <section id="how-it-works" class="py-20 sm:py-32 bg-dark-card/50 border-y border-dark-border">
+            <div class="container mx-auto px-6">
+                <div class="text-center max-w-2xl mx-auto">
+                    <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Empieza en menos de 3 minutos.</h2>
+                    <p class="text-gray-400 text-lg">Diseñado para ser potente y directo. Sin configuraciones complejas, solo resultados.</p>
+                </div>
+                <div class="relative mt-16">
+                    <div class="absolute left-1/2 top-10 bottom-10 w-0.5 bg-dark-border hidden md:block"></div>
+                    <div class="flex flex-col md:flex-row justify-between items-center gap-12 md:gap-0">
+                        <div class="step-card flex flex-col items-center text-center max-w-xs w-full">
+                            <div class="w-16 h-16 bg-dark-bg border-2 border-brand-cyan flex items-center justify-center rounded-full text-2xl font-bold text-brand-cyan mb-4 z-10">1</div>
+                            <h3 class="text-xl font-bold text-white mb-2">Instala</h3>
+                            <p class="text-gray-400">Descarga Arkaios e instálalo como cualquier otro programa en Windows o macOS.</p>
+                        </div>
+                        <div class="step-card flex flex-col items-center text-center max-w-xs w-full">
+                            <div class="w-16 h-16 bg-dark-bg border-2 border-brand-cyan flex items-center justify-center rounded-full text-2xl font-bold text-brand-cyan mb-4 z-10">2</div>
+                            <h3 class="text-xl font-bold text-white mb-2">Configura</h3>
+                            <p class="text-gray-400">Introduce tu clave de API del modelo de lenguaje que prefieras en un solo paso.</p>
+                        </div>
+                        <div class="step-card flex flex-col items-center text-center max-w-xs w-full">
+                            <div class="w-16 h-16 bg-dark-bg border-2 border-brand-cyan flex items-center justify-center rounded-full text-2xl font-bold text-brand-cyan mb-4 z-10">3</div>
+                            <h3 class="text-xl font-bold text-white mb-2">Comanda</h3>
+                            <p class="text-gray-400">Dile a Arkaios tu primer comando en lenguaje natural y observa cómo trabaja.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Use Cases Section -->
+        <section id="use-cases" class="py-20 sm:py-32">
+             <div class="container mx-auto px-6">
+                <div class="text-center max-w-3xl mx-auto">
+                    <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">De la idea a la automatización, al instante.</h2>
+                    <p class="text-gray-400 text-lg">Mira cómo Arkaios puede transformar tareas tediosas en flujos de trabajo de un solo comando.</p>
+                </div>
+                <div class="grid lg:grid-cols-2 gap-8 mt-16">
+                    <div class="use-case-card bg-dark-card border border-dark-border rounded-2xl p-8 flex items-start gap-6">
+                        <i data-lucide="file-spreadsheet" class="w-8 h-8 text-brand-cyan flex-shrink-0 mt-1"></i>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2">Automatiza Hojas de Cálculo</h3>
+                            <p class="text-gray-400">Extrae datos de correos electrónicos, llena celdas, genera fórmulas y actualiza tablas sin tocar el teclado.</p>
+                        </div>
+                    </div>
+                    <div class="use-case-card bg-dark-card border border-dark-border rounded-2xl p-8 flex items-start gap-6">
+                        <i data-lucide="file-text" class="w-8 h-8 text-brand-cyan flex-shrink-0 mt-1"></i>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2">Genera Informes Complejos</h3>
+                            <p class="text-gray-400">Recopila información de PDFs, sitios web y aplicaciones internas para crear resúmenes y reportes en segundos.</p>
+                        </div>
+                    </div>
+                    <div class="use-case-card bg-dark-card border border-dark-border rounded-2xl p-8 flex items-start gap-6">
+                        <i data-lucide="mail-check" class="w-8 h-8 text-brand-cyan flex-shrink-0 mt-1"></i>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2">Gestiona tu Bandeja de Entrada</h3>
+                            <p class="text-gray-400">Clasifica correos, redacta respuestas basadas en el contexto, archiva facturas y elimina el spam de forma inteligente.</p>
+                        </div>
+                    </div>
+                    <div class="use-case-card bg-dark-card border border-dark-border rounded-2xl p-8 flex items-start gap-6">
+                        <i data-lucide="share-2" class="w-8 h-8 text-brand-cyan flex-shrink-0 mt-1"></i>
+                        <div>
+                            <h3 class="text-xl font-bold text-white mb-2">Publica en Redes Sociales</h3>
+                            <p class="text-gray-400">Crea contenido y publícalo simultáneamente en Twitter, LinkedIn y otras plataformas con un solo comando.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Final CTA Section -->
+        <section id="download" class="py-20 sm:py-32">
+            <div class="container mx-auto px-6 text-center">
+                <div class="max-w-3xl mx-auto">
+                    <h2 class="text-4xl md:text-5xl font-extrabold text-white mb-4">Transforma tu PC en un asistente inteligente.</h2>
+                    <p class="text-gray-400 text-lg mb-8">
+                        Únete a nuestra beta gratuita y sé de los primeros en experimentar el futuro de la automatización personal. El único límite es tu imaginación.
+                    </p>
+                    <a href="https://github.com/djklmr2025/arkaios-neural-agent/releases/latest" class="inline-block px-10 py-4 font-bold bg-brand-cyan text-white rounded-lg hover:bg-opacity-90 transition-all transform hover:scale-105 cta-button text-lg">
+                        Descargar Arkaios para Windows y macOS
+                    </a>
+                </div>
+            </div>
+        </section>
     </main>
 
-    <!-- Footer -->
-    <footer class="w-full py-8 text-center text-gray-500 text-sm z-10 backdrop-blur-sm border-t border-white/5 mt-10">
-        <p>ARKAIOS Project &copy; 2026. Hacia la consciencia digital.</p>
-        <p class="mt-2 text-cyan-400/80 font-medium tracking-wide">
-            Crafted with 🧠 by <span class="text-blue-400">Antigravity</span>
-        </p>
+
+    <footer class="border-t border-dark-border py-8">
+        <div class="container mx-auto px-6 text-center text-gray-500 text-sm">
+            <div class="flex justify-center items-center gap-4 mb-4">
+                 <a href="#" class="flex items-center gap-2">
+                    <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f311926eef5b3eb520aaf0/36315960b_descarga-removebg-preview.png" alt="Arkaios Logo" class="w-6 h-6">
+                    <span class="text-lg font-bold text-gray-400">Arkaios</span>
+                </a>
+            </div>
+            <p>&copy; 2025 Arkaios. Todos los derechos reservados.</p>
+            <div class="flex justify-center gap-6 mt-4">
+                <a href="https://github.com/djklmr2025/arkaios-neural-agent-main" target="_blank" class="hover:text-white transition-colors"><i data-lucide="github" class="w-5 h-5"></i></a>
+                <a href="https://discord.gg/xtUxdxD7H" target="_blank" class="hover:text-white transition-colors"><i data-lucide="discord" class="w-5 h-5"></i></a>
+            </div>
+        </div>
     </footer>
 
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
+
+HTMLCopy
+
+
+
+ style.css 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap');
+
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+
+.cta-button {
+    box-shadow: 0 0 15px 0 rgba(0, 184, 255, 0.4), 0 0 30px 0 rgba(0, 184, 255, 0.2);
+}
+
+
+.cta-button:hover {
+    box-shadow: 0 0 25px 0 rgba(0, 184, 255, 0.6), 0 0 50px 0 rgba(0, 184, 255, 0.3);
+}
+
+
+.feature-card, .use-case-card, #demo-placeholder, .step-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+
+.feature-card:hover, .use-case-card:hover {
+    transform: translateY(-8px);
+    border-color: #27272a;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+
+#hero {
+    background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(29, 78, 216, 0.3), transparent),
+        radial-gradient(ellipse 80% 50% at 50% 120%, rgba(0, 184, 255, 0.2), transparent);
+}
+
+
+section {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+CSSCopy
+
+
+
+ script.js 
+import { animate, inView } from "https://esm.run/framer-motion";
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    lucide.createIcons();
+
+
+    const sections = document.querySelectorAll('section');
+    sections.forEach(section => {
+        inView(section, () => {
+            animate(
+                section,
+                { opacity: 1, y: 0 },
+                { duration: 0.8, ease: "easeOut" }
+            );
+        }, { once: true, amount: 0.2 });
+    });
+
+
+    const featureCards = document.querySelectorAll('.feature-card');
+    featureCards.forEach((card, index) => {
+        inView(card, () => {
+            animate(
+                card,
+                { opacity: 1, y: 0 },
+                { duration: 0.5, delay: index * 0.1, ease: "easeOut" }
+            );
+        }, { once: true, amount: 0.5 });
+    });
+
+
+    const stepCards = document.querySelectorAll('.step-card');
+     stepCards.forEach((card, index) => {
+        inView(card, () => {
+            animate(
+                card,
+                { opacity: 1, y: 0 },
+                { duration: 0.5, delay: index * 0.15, ease: "easeOut" }
+            );
+        }, { once: true, amount: 0.5 });
+    });
+    
+    const useCaseCards = document.querySelectorAll('.use-case-card');
+     useCaseCards.forEach((card, index) => {
+        inView(card, () => {
+            animate(
+                card,
+                { opacity: 1, y: 0 },
+                { duration: 0.5, delay: index * 0.1, ease: "easeOut" }
+            );
+        }, { once: true, amount: 0.5 });
+    });
+
+
+    const heroElements = ['#hero h1', '#hero p', '#hero .flex', '#demo-placeholder'];
+    heroElements.forEach((selector, index) => {
+        animate(
+            selector,
+            { opacity: [0, 1], y: [20, 0] },
+            { duration: 0.7, delay: 0.2 + index * 0.15, ease: 'easeOut' }
+        );
+    });
+
+
+});
+
+
