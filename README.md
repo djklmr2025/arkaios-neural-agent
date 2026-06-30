@@ -71,7 +71,7 @@ neuralagent/
 La forma más simple de empezar: **no necesitas compilar nada.**
 
 1. Ve a la pestaña **[Releases](https://github.com/djklmr2025/arkaios-neural-agent/releases)**.
-2. Descarga el instalador más reciente, ej. `NeuralAgent Setup 1.5.2.exe`.
+2. Descarga el instalador más reciente, ej. `NeuralAgent.Setup.1.5.2.exe` (release v1.0.0).
 3. Ejecútalo, abre la app, pega tu propia API key (Gemini, Claude, GPT-4...) y listo — el agente está vivo.
 
 > 💡 Filosofía BYOK: tú pones tu llave, tú controlas tus datos, tú decides el modelo. Cero servidores intermedios, cero costos ocultos.
