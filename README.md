@@ -23,12 +23,6 @@ It took care of the rest!
 
 ---
 
-## 🌐 Website & Community
-
-- 🌍 **Website**: [https://www.getneuralagent.com](https://www.getneuralagent.com)
-- 💬 **Discord**: [Join NeuralAgent Discord](https://discord.gg/eGyW3kPcUs)
-
----
 
 ## 🚀 Features
 
