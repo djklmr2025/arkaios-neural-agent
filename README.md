@@ -140,7 +140,7 @@ Configura el proveedor (`OpenAI`, `Azure OpenAI`, `Anthropic`, `Bedrock`, `Gemin
 
 ---
 
-## 🌌 Hitos recientes — Release v1.5.2
+## 🌌 Hitos recientes — Release v1.0.0
 
 - 🔧 **Estabilización del núcleo**: migración y corrección de compatibilidad con el SDK `langchain-google-genai`, resolviendo la restricción de Gemini que exige `user contents` en lugar de solo `system prompts`.
 - 📦 **Primer instalador oficial**: `NeuralAgent Setup 1.5.2.exe`, empaquetando frontend y daemon en un solo binario.
