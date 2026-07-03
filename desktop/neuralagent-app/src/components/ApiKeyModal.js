@@ -218,7 +218,7 @@ const ApiKeyModal = ({ onSuccess }) => {
                   onSuccess();
                 }, 4000);
               } else {
-                setError(provider === 'puter' ? 'Token Puter invalido o conexion rechazada.' : 'Llave invalida o conexion rechazada por Google.');
+                setError(provider === 'puter' ? 'Token Puter invalido o conexion rechazada.' : 'Llave invalida o conexion rechazada.');
                 setLoading(false);
               }
             } catch (pingErr) {
@@ -254,13 +254,13 @@ const ApiKeyModal = ({ onSuccess }) => {
           <>
             <Title>Inyeccion de Memoria</Title>
             <Description>
-              Para despertar a ARKAIOS, elige un proveedor de IA. Puter permite que cada usuario use su propia cuenta; Gemini sigue disponible como BYOK.
+              Para despertar a ARKAIOS, elige un proveedor de IA. Puter permite que cada usuario use su propia cuenta; o puedes usar tu API Key propia (BYOK).
             </Description>
 
             <InputGroup>
               <Select value={provider} onChange={(e) => handleProviderChange(e.target.value)}>
                 <option value="puter">Puter AI</option>
-                <option value="google">Google Gemini</option>
+                <option value="google">API Key Propia (BYOK)</option>
               </Select>
             </InputGroup>
 
@@ -276,7 +276,7 @@ const ApiKeyModal = ({ onSuccess }) => {
             <InputGroup>
               <Input
                 type="text"
-                placeholder={provider === 'puter' ? 'Modelo Puter, ej. gpt-5-nano' : 'Modelo Gemini, ej. gemini-2.5-flash'}
+                placeholder={provider === 'puter' ? 'Modelo Puter, ej. gpt-5-nano' : 'Modelo, ej. gemini-2.5-flash'}
                 value={modelId}
                 onChange={(e) => setModelId(e.target.value)}
               />
@@ -285,7 +285,7 @@ const ApiKeyModal = ({ onSuccess }) => {
             <InputGroup>
               <Input 
                 type="password" 
-                placeholder={provider === 'puter' ? 'Pega tu PUTER_AUTH_TOKEN aqui...' : 'Pega tu GEMINI_API_KEY aqui...'}
+                placeholder={provider === 'puter' ? 'Pega tu PUTER_AUTH_TOKEN aqui...' : 'Pega tu API Key aqui...'}
                 value={credential}
                 onChange={(e) => setCredential(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
@@ -296,7 +296,7 @@ const ApiKeyModal = ({ onSuccess }) => {
             <Description>
               {provider === 'puter'
                 ? 'Para automatizacion desktop, el backend necesita un token de tu cuenta Puter. No lo subas al repo.'
-                : <>Puedes obtener una llave en <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">Google AI Studio</a>.</>}
+                : <>Introduce tu API Key propia para usar tu proveedor (OpenAI, Anthropic, Google, etc).</>}
             </Description>
 
             {error && <ErrorMsg>{error}</ErrorMsg>}

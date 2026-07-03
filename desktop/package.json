@@ -15,6 +15,21 @@
     "electron": "^41.7.1"
   },
   "build": {
-    "publish": null
+    "publish": null,
+    "asar": true,
+    "extraResources": [
+      {
+        "from": "agent_build/agent.exe",
+        "to": "agent.exe"
+      },
+      {
+        "from": "agent_build/suggestor.exe",
+        "to": "suggestor.exe"
+      },
+      {
+        "from": "agent_build/cerebro.exe",
+        "to": "cerebro.exe"
+      }
+    ]
   }
 }
