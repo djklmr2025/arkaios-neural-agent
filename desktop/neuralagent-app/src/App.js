@@ -8,6 +8,7 @@ import {
 import { useSelector, useDispatch } from 'react-redux';
 import LoadingDialog from './components/LoadingDialog';
 import FullLoading from './components/FullLoading';
+import ApiKeyModal from './components/ApiKeyModal';
 import constants from './utils/constants';
 import MessageBar from './components/Elements/MessageBar';
 import { setAppLoading, setUser, setAccessToken, setLoadingDialog } from './store';
@@ -98,6 +99,18 @@ function App() {
     });
   }
 
+  const [apiKeyValid, setApiKeyValid] = useState(true);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.electronAPI?.checkApiKeyStatus) {
+        const isValid = await window.electronAPI.checkApiKeyStatus();
+        setApiKeyValid(isValid);
+      }
+    };
+    checkKey();
+  }, []);
+
   useEffect(() => {
     window.addEventListener('resize', handleResize);
 
@@ -177,6 +190,9 @@ function App() {
 
   return (
     <>
+      {
+        !apiKeyValid && <ApiKeyModal onSuccess={() => setApiKeyValid(true)} />
+      }
       {
         isFullLoading ? <FullLoading /> : <></>
       }

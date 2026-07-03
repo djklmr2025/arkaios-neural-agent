@@ -10,9 +10,9 @@ export function openInNewTab(url) {
   win.focus()
 }
 
-export const logoutUserLocally = (removeCookie) => {
-  window.electronAPI.deleteToken();
-  window.electronAPI.deleteRefreshToken();
+export const logoutUserLocally = async (removeCookie) => {
+  await window.electronAPI.deleteToken();
+  await window.electronAPI.deleteRefreshToken();
   window.location.reload();
 };
 
@@ -33,11 +33,11 @@ export const logoutUser = (accessToken, dispatch) => {
 export const refreshToken = async () => {
   axios.post('/auth/refresh_token', {
     refresh_token: await window.electronAPI.getRefreshToken(),
-  }, API_KEY_HEADER).then((response) => {
+  }, API_KEY_HEADER).then(async (response) => {
     const data = response.data;
-    window.electronAPI.setToken(data.new_token);
+    await window.electronAPI.setToken(data.new_token);
     if (data.new_refresh !== null) {
-      window.electronAPI.setRefreshToken(data.new_refresh);
+      await window.electronAPI.setRefreshToken(data.new_refresh);
     }
     window.location.reload();
   }).catch((error) => {

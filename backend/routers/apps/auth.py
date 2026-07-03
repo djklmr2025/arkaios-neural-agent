@@ -15,6 +15,15 @@ import requests
 
 router = APIRouter(prefix='/apps/auth', tags=['auth'])
 
+GOOGLE_LOGIN_CLIENT_ID = os.getenv(
+    "GOOGLE_LOGIN_CLIENT_ID",
+    "756809656093-nammscarkr8bcjavl6qp00fbfikoqo72.apps.googleusercontent.com",
+)
+GOOGLE_LOGIN_DESKTOP_REDIRECT_URI = os.getenv(
+    "GOOGLE_LOGIN_DESKTOP_REDIRECT_URI",
+    "http://127.0.0.1:36478",
+)
+
 
 @router.post('/login')
 def login_with_email(user_auth: UserAuth, db: Session = Depends(get_session)):
@@ -56,17 +65,22 @@ def login_with_email(user_auth: UserAuth, db: Session = Depends(get_session)):
 @router.post('/login_google_desktop')
 def login_with_google_desktop(login_google_obj: LoginWithGoogle, db: Session = Depends(get_session)):
     try:
+        token_payload = {
+            "code": login_google_obj.code,
+            "client_id": GOOGLE_LOGIN_CLIENT_ID,
+            "redirect_uri": GOOGLE_LOGIN_DESKTOP_REDIRECT_URI,
+            "grant_type": "authorization_code",
+            "code_verifier": login_google_obj.code_verifier,
+        }
+        client_secret = os.getenv("GOOGLE_LOGIN_CLIENT_SECRET")
+        if client_secret:
+            token_payload["client_secret"] = client_secret
+
         token_res = requests.post(
             "https://oauth2.googleapis.com/token",
-            data={
-                "code": login_google_obj.code,
-                "client_id": os.getenv("GOOGLE_LOGIN_CLIENT_ID"),
-                "client_secret": os.getenv("GOOGLE_LOGIN_CLIENT_SECRET"),
-                "redirect_uri": os.getenv("GOOGLE_LOGIN_DESKTOP_REDIRECT_URI"),
-                "grant_type": "authorization_code",
-                "code_verifier": login_google_obj.code_verifier,
-            },
-            headers={"Content-Type": "application/x-www-form-urlencoded"}
+            data=token_payload,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=20,
         )
 
         if token_res.status_code != 200:
@@ -77,7 +91,8 @@ def login_with_google_desktop(login_google_obj: LoginWithGoogle, db: Session = D
 
         response = requests.get(
             'https://www.googleapis.com/oauth2/v3/userinfo',
-            headers={'Authorization': f'Bearer {access_token}'}
+            headers={'Authorization': f'Bearer {access_token}'},
+            timeout=20,
         )
 
         if response.status_code != status.HTTP_200_OK:
@@ -130,6 +145,8 @@ def login_with_google_desktop(login_google_obj: LoginWithGoogle, db: Session = D
             'user': user_data,
         }
 
+    except CustomError:
+        raise
     except Exception:
         raise CustomError(status.HTTP_500_INTERNAL_SERVER_ERROR, 'Error')
 

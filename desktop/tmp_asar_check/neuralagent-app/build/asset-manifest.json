@@ -1,0 +1,14 @@
+{
+  "files": {
+    "main.css": "./static/css/main.4f28c901.css",
+    "main.js": "./static/js/main.0c03cc63.js",
+    "static/media/neuralagent_logo_white.png": "./static/media/neuralagent_logo_white.a0d0774f7d7fc9a293c5.png",
+    "index.html": "./index.html",
+    "main.4f28c901.css.map": "./static/css/main.4f28c901.css.map",
+    "main.0c03cc63.js.map": "./static/js/main.0c03cc63.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.4f28c901.css",
+    "static/js/main.0c03cc63.js"
+  ]
+}

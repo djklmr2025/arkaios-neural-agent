@@ -36,6 +36,9 @@ logging.basicConfig(
 )
 
 screenshot_requested = False
+REQUEST_TIMEOUT_SECONDS = 45
+SUBTASK_TIMEOUT_SECONDS = 15
+MAX_CONSECUTIVE_MISSES = 2
 
 def type_unicode_smart(text: str, delay: float = 0.05) -> None:
     try:
@@ -63,9 +66,28 @@ def type_unicode_smart(text: str, delay: float = 0.05) -> None:
 
     pyperclip.copy(old_clip)
 
+WINDOWS_APP_ALIASES = {
+    "notepad": "notepad.exe",
+    "bloc de notas": "notepad.exe",
+    "block de notas": "notepad.exe",
+    "calculator": "calc.exe",
+    "calculadora": "calc.exe",
+    "paint": "mspaint.exe",
+}
+
+
+def windows_app_command(app_name):
+    normalized = app_name.strip().lower()
+    return WINDOWS_APP_ALIASES.get(normalized, app_name.strip())
+
+
 def windows_direct_app_launch(app_name):
     try:
-        subprocess.Popen(f'start "" "{app_name}"', shell=True, check=True)
+        command = windows_app_command(app_name)
+        if command.lower().endswith(".exe"):
+            subprocess.Popen([command], shell=False)
+        else:
+            subprocess.Popen(f'start "" "{command}"', shell=True)
         return True
     except subprocess.CalledProcessError as e:
         print(f"[❌] Failed to launch with 'start': {e}")
@@ -79,6 +101,10 @@ def launch_application(app_name):
     try:
         if os_name == 'windows':
             if windows_direct_app_launch(app_name):
+                for _ in range(10):
+                    time.sleep(0.5)
+                    if focus_app(app_name):
+                        break
                 return
 
             ps_command = f"powershell -Command \"Get-StartApps | Where-Object {{$_.Name -like '*{app_name}*'}} | Select-Object -First 1 -ExpandProperty AppId\""
@@ -86,6 +112,10 @@ def launch_application(app_name):
             app_id = result.stdout.strip()
             if app_id:
                 subprocess.Popen(f'explorer.exe shell:AppsFolder\\{app_id}', shell=True)
+                for _ in range(10):
+                    time.sleep(0.5)
+                    if focus_app(app_name):
+                        break
                 return
             print("❌ App not found via UWP or direct command.")
 
@@ -106,11 +136,22 @@ def focus_app(app_name):
             import win32gui
             import win32con
             import win32api
+            import win32process
+            import psutil
+
+            expected_process = windows_app_command(app_name).lower()
+            expected_name = app_name.lower()
 
             def enum_handler(hwnd, match_hwnds):
                 if win32gui.IsWindowVisible(hwnd):
                     title = win32gui.GetWindowText(hwnd)
-                    if app_name.lower() in title.lower():
+                    process_name = ""
+                    try:
+                        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                        process_name = psutil.Process(pid).name().lower()
+                    except Exception:
+                        pass
+                    if expected_name in title.lower() or expected_process == process_name:
                         match_hwnds.append(hwnd)
 
             match_hwnds = []
@@ -339,9 +380,10 @@ def get_next_step():
         screenshot_requested = False
 
     try:
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(url, json=payload, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS)
         if response.status_code in (200, 201, 202):
             return response.json()
+        print(f"[WARN] next_step returned HTTP {response.status_code}: {response.text[:300]}")
     except Exception as e:
         print(f"[❌] Error sending next step request: {e}")
     
@@ -367,17 +409,44 @@ def get_current_subtask():
         'current_running_apps': ui_extraction.get_running_apps(),
     }
     try:
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(url, json=payload, headers=headers, timeout=SUBTASK_TIMEOUT_SECONDS)
         if response.status_code in (200, 201, 202):
             return response.json()
-    except:
-        pass
+        print(f"[WARN] current_subtask returned HTTP {response.status_code}: {response.text[:300]}")
+    except Exception as e:
+        print(f"[ERROR] Error getting current subtask: {e}")
     return None
 
+def cancel_current_task(reason):
+    api_url = os.getenv('NEURALAGENT_API_URL')
+    thread_id = os.getenv('NEURALAGENT_THREAD_ID')
+    access_token = os.getenv('NEURALAGENT_USER_ACCESS_TOKEN')
+
+    if not api_url or not thread_id or not access_token:
+        return
+
+    url = f"{api_url}/threads/{thread_id}/cancel_task"
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {access_token}',
+    }
+
+    try:
+        print(f"[WARN] Canceling current task: {reason}")
+        requests.post(url, json={}, headers=headers, timeout=SUBTASK_TIMEOUT_SECONDS)
+    except Exception as e:
+        print(f"[ERROR] Error canceling current task: {e}")
+
 async def main_loop():
+    consecutive_misses = 0
+
     while True:
         current_subtask_response = get_current_subtask()
         if not current_subtask_response:
+            consecutive_misses += 1
+            if consecutive_misses >= MAX_CONSECUTIVE_MISSES:
+                cancel_current_task("could not retrieve current subtask")
+                break
             continue
 
         if current_subtask_response.get('action') == 'task_completed':
@@ -387,12 +456,17 @@ async def main_loop():
         print("NeuralAgent Next Step Response:", action_response)
 
         if not action_response:
+            consecutive_misses += 1
+            if consecutive_misses >= MAX_CONSECUTIVE_MISSES:
+                cancel_current_task("no next_step response")
+                break
             continue
 
-        if any(a['action'] in ['task_completed', 'subtask_failed'] for a in action_response.get('actions', [])):
-            break
-
+        consecutive_misses = 0
         perform_action(action_response)
+
+        if any(a['action'] in ['task_completed', 'subtask_completed', 'subtask_failed', 'task_failed'] for a in action_response.get('actions', [])):
+            break
 
 if __name__ == "__main__":
     asyncio.run(main_loop())

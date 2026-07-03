@@ -1,0 +1,17 @@
+{
+  "name": "neuralagent-desktop",
+  "version": "1.5.5",
+  "description": "NeuralAgent Electron Desktop Application",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "main.js",
+  "dependencies": {
+    "electron-is-dev": "^3.0.1",
+    "electron-store": "^10.0.1",
+    "express": "^5.1.0",
+    "sudo-prompt": "^9.2.1",
+    "tree-kill": "^1.2.2",
+    "uuid": "^11.1.0"
+  }
+}

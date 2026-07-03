@@ -129,6 +129,7 @@ export default function Overlay() {
   const [loading, setLoading] = useState(false);
   const [runningThreadId, setRunningThreadId] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
+  const [suggestionsError, setSuggestionsError] = useState('');
   const [backgroundMode, setBackgroundMode] = useState(false);
   const [thinkingMode, setThinkingMode] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(true);
@@ -173,11 +174,21 @@ export default function Overlay() {
 
   const getSuggestions = async () => {
     setIsLoadingSuggestions(true);
-    const suggestedTasks = await window.electronAPI.getSuggestions(
-      process.env.REACT_APP_PROTOCOL + '://' + process.env.REACT_APP_DNS,
-    );
-    setSuggestions(suggestedTasks.suggestions);
-    setIsLoadingSuggestions(false);
+    setSuggestionsError('');
+    try {
+      const suggestedTasks = await window.electronAPI.getSuggestions(
+        process.env.REACT_APP_PROTOCOL + '://' + process.env.REACT_APP_DNS,
+      );
+      setSuggestions(Array.isArray(suggestedTasks?.suggestions) ? suggestedTasks.suggestions : []);
+      if (suggestedTasks?.error) {
+        setSuggestionsError('Suggestions are unavailable right now.');
+      }
+    } catch (err) {
+      setSuggestions([]);
+      setSuggestionsError('Suggestions are unavailable right now.');
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
   };
 
   const cancelRunningTask = (tid) => {
@@ -349,7 +360,11 @@ export default function Overlay() {
             ? Array.from({ length: 7 }).map((_, idx) => (
                 <SkeletonItem key={idx} />
               ))
-            : suggestions.map((s, idx) => (
+            : suggestionsError
+              ? <SuggestionItem>{suggestionsError}</SuggestionItem>
+              : suggestions.length === 0
+                ? <SuggestionItem>No suggestions available.</SuggestionItem>
+                : suggestions.map((s, idx) => (
                 <SuggestionItem
                   key={idx}
                   onClick={() => executeSuggestion(s.ai_prompt)}

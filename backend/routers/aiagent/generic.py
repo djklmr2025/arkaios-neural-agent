@@ -1,16 +1,11 @@
-from fastapi import APIRouter, Depends, UploadFile, File, status
+from fastapi import APIRouter, Depends, status
 from sqlmodel import Session, select, and_
 from db.database import get_session
-from typing import Optional
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from utils import constants
-from botocore.config import Config
-from langchain_aws import ChatBedrockConverse
-from langchain_openai import AzureChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
 import json
 from utils import ai_prompts
-from utils.procedures import CustomError, extract_json, extract_json_array
+from utils.procedures import CustomError, extract_json
 from dependencies.auth_dependencies import get_current_user_dependency
 from db.models import (User, Thread, ThreadStatus, ThreadTask, ThreadTaskStatus, ThreadMessage,
                        ThreadChatType, ThreadChatFromChoices, ThreadTaskPlan, ThreadTaskPlanStatus,
@@ -313,8 +308,11 @@ def next_step(tid: str, next_step_req: NextStepRequest, db: Session = Depends(ge
     if screenshot_user_message_block:
         computer_use_user_message.append(screenshot_user_message_block)
 
+    soul_id = os.environ.get("ARKAIOS_NODE_SOUL_ID", "ARKAIOS-NODE-GENESIS")
+    system_prompt = ai_prompts.COMPUTER_USE_SYSTEM_PROMPT.replace("{{SOUL_ID}}", soul_id)
+
     prompt = ChatPromptTemplate.from_messages([
-        SystemMessage(content=ai_prompts.COMPUTER_USE_SYSTEM_PROMPT),
+        SystemMessage(content=system_prompt),
         HumanMessage(content=computer_use_user_message),
     ])
 
@@ -377,6 +375,38 @@ def next_step(tid: str, next_step_req: NextStepRequest, db: Session = Depends(ge
             db.add(current_subtask)
             db.commit()
             db.refresh(current_subtask)
+
+            remaining_subtask = db.exec(select(PlanSubtask).where(and_(
+                PlanSubtask.status == SubtaskStatus.ACTIVE,
+                PlanSubtask.thread_task_plan_id == current_plan.id
+            ))).first()
+
+            if not remaining_subtask:
+                current_plan.status = ThreadTaskPlanStatus.COMPLETED
+                db.add(current_plan)
+                db.commit()
+                db.refresh(current_plan)
+
+                task.status = ThreadTaskStatus.COMPLETED
+                db.add(task)
+                db.commit()
+                db.refresh(task)
+
+                instance.status = ThreadStatus.STANDBY
+                db.add(instance)
+                db.commit()
+                db.refresh(instance)
+
+                task_completed_message = ThreadMessage(
+                    thread_id=instance.id,
+                    thread_task_id=task.id,
+                    thread_chat_type=ThreadChatType.DESKTOP_USE,
+                    thread_chat_from=ThreadChatFromChoices.FROM_AI,
+                    text=json.dumps({'actions': [{'action': 'task_completed'}]}),
+                )
+                db.add(task_completed_message)
+                db.commit()
+                db.refresh(task_completed_message)
 
         elif action_type == 'subtask_failed':
             # Mark plan, task, and thread as failed

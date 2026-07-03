@@ -58,10 +58,10 @@ function SignUp() {
     }
 
     dispatch(setLoadingDialog(true));
-    axios.post('/auth/signup', data, API_KEY_HEADER).then((response) => {
+    axios.post('/auth/signup', data, API_KEY_HEADER).then(async (response) => {
       dispatch(setLoadingDialog(false));
-      window.electronAPI.setToken(response.data.token);
-      window.electronAPI.setRefreshToken(response.data.refresh_token);
+      await window.electronAPI.setToken(response.data.token);
+      await window.electronAPI.setRefreshToken(response.data.refresh_token);
       window.location.reload();
     }).catch((error) => {
       dispatch(setLoadingDialog(false));
@@ -74,6 +74,7 @@ function SignUp() {
 
   const loginWithGoogle = async () => {
     try {
+      dispatch(setLoadingDialog(true));
       const { code, codeVerifier } = await window.electronAPI.loginWithGoogle();
   
       const response = await axios.post('/auth/login_google_desktop', {
@@ -83,11 +84,17 @@ function SignUp() {
   
       const { token, refresh_token } = response.data;
   
-      window.electronAPI.setToken(token);
-      window.electronAPI.setRefreshToken(refresh_token);
+      dispatch(setLoadingDialog(false));
+      await window.electronAPI.setToken(token);
+      await window.electronAPI.setRefreshToken(refresh_token);
   
       window.location.reload();
     } catch (error) {
+      dispatch(setLoadingDialog(false));
+      dispatch(setError(true, 'Google login failed. Please try again.'));
+      setTimeout(() => {
+        dispatch(setError(false, ''));
+      }, 3000);
       console.error('Login failed:', error);
     }
   };

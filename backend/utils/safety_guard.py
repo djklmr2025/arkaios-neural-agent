@@ -7,6 +7,7 @@ Blocks absolutely dangerous operations and flags sensitive ones for user confirm
 
 import re
 from typing import List, Dict, Tuple
+from utils.action_logger import log_action
 
 # ─────────────────────────────────────────────────────────────────────────────
 # BLOCKLIST — these actions are NEVER allowed, no matter what
@@ -145,15 +146,18 @@ def evaluate_actions(actions: List[Dict]) -> Dict:
         if is_block:
             blocked = True
             blocked_reason = reason
+            log_action("safety.blocked", {"action": action, "reason": reason}, status="blocked")
             break
 
         level = risk_level(action)
         if level == "HIGH":
             overall_risk = "HIGH"
             flagged.append({"action": action, "risk": "HIGH"})
+            log_action("safety.requires_confirmation", {"action": action, "risk": "HIGH"}, status="warning")
         elif level == "MEDIUM" and overall_risk != "HIGH":
             overall_risk = "MEDIUM"
             flagged.append({"action": action, "risk": "MEDIUM"})
+            log_action("safety.requires_confirmation", {"action": action, "risk": "MEDIUM"}, status="warning")
 
     if blocked:
         return {

@@ -152,8 +152,13 @@ def extract_desktop_icons_windows():
     except Exception:
         return []
 
+    try:
+        children = listview.GetChildren()
+    except Exception:
+        return []
+
     icons = []
-    for idx, item in enumerate(listview.GetChildren(), start=1):
+    for idx, item in enumerate(children, start=1):
         try:
             name = item.Name or ''
             rect = item.BoundingRectangle

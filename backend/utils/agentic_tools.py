@@ -1,11 +1,6 @@
-from langchain_community.document_loaders import UnstructuredPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import WebBaseLoader, YoutubeLoader
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import AzureChatOpenAI
-
-
 def get_llm():
+    from langchain_openai import AzureChatOpenAI
+
     return AzureChatOpenAI(
         azure_deployment='gpt-4.1-mini',
         api_version='2024-12-01-preview',
@@ -17,6 +12,10 @@ def get_llm():
 
 
 def fetch_and_summarize_url(url: str) -> str:
+    from langchain_community.document_loaders import WebBaseLoader
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
     loader = WebBaseLoader(url)
     documents = loader.load()
 
@@ -33,6 +32,11 @@ def fetch_and_summarize_url(url: str) -> str:
 
 
 def fetch_and_summarize_pdf(file_path: str = None, url: str = None) -> str:
+    from langchain_community.document_loaders import UnstructuredPDFLoader
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from utils.workspace_guard import resolve_workspace_path
+
     if url:
         import requests
         import tempfile
@@ -41,6 +45,8 @@ def fetch_and_summarize_pdf(file_path: str = None, url: str = None) -> str:
         temp_file.write(response.content)
         temp_file.close()
         file_path = temp_file.name
+    elif file_path:
+        file_path = str(resolve_workspace_path(file_path))
 
     loader = UnstructuredPDFLoader(file_path)
     documents = loader.load()
@@ -59,6 +65,10 @@ def fetch_and_summarize_pdf(file_path: str = None, url: str = None) -> str:
 
 
 def summarize_youtube_video(url: str) -> str:
+    from langchain_community.document_loaders import YoutubeLoader
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
     try:
         loader = YoutubeLoader.from_youtube_url(url, add_video_info=False)
         documents = loader.load()

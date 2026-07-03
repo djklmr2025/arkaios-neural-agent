@@ -41,7 +41,7 @@ def get_suggestions():
     }
 
     try:
-        response = requests.post(api_url, json=payload, headers=headers)
+        response = requests.post(api_url, json=payload, headers=headers, timeout=45)
         if response.status_code in (200, 201):
             return response.json()
         else:
