@@ -156,7 +156,27 @@ const ApiKeyModal = ({ onSuccess }) => {
       }
       await window.puter.auth.signIn();
       const user = window.puter.auth.getUser ? await window.puter.auth.getUser() : null;
-      setPuterStatus(user?.username ? `Puter conectado como ${user.username}.` : 'Puter conectado.');
+      
+      let token = '';
+      try {
+        if (typeof window.puter.auth.getToken === 'function') {
+          token = await window.puter.auth.getToken();
+        } else if (window.puter.authToken) {
+          token = window.puter.authToken;
+        } else {
+          // Fallback para extraer token del localStorage de puter
+          token = window.localStorage.getItem('puter_auth_token') || '';
+        }
+      } catch (e) {
+        console.error("Error extrayendo token:", e);
+      }
+
+      if (token) {
+        setCredential(token);
+        setPuterStatus(user?.username ? `Puter conectado como ${user.username}. Token auto-inyectado.` : 'Puter conectado. Token inyectado.');
+      } else {
+        setPuterStatus(user?.username ? `Puter conectado como ${user.username}. (No se pudo auto-inyectar token)` : 'Puter conectado.');
+      }
     } catch (err) {
       setPuterStatus('No se completo el inicio de sesion con Puter.');
     }

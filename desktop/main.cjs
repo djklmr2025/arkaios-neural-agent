@@ -1,4 +1,4 @@
-﻿const path = require('path');
+const path = require('path');
 const url = require('url');
 const constants = {
   ACCESS_TOKEN_STORE_KEY: '_NA_ACCESS_TOK',
@@ -710,6 +710,19 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    return {
+      action: 'allow',
+      overrideBrowserWindowOptions: {
+        autoHideMenuBar: true,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+        }
+      }
+    };
   });
 
   const startURL = isDev

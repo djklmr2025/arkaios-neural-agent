@@ -776,6 +776,19 @@ function createWindow() {
     },
   });
 
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    return {
+      action: 'allow',
+      overrideBrowserWindowOptions: {
+        autoHideMenuBar: true,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+        }
+      }
+    };
+  });
+
   mainWindow.loadURL(getFrontendUrl());
 
   mainWindow.on('close', async (e) => {
