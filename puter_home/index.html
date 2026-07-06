@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NeuralAgent Puter Home</title>
+    <script src="https://js.puter.com/v2/"></script>
+    <script src="./bridge-config.js"></script>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b1014;
+        --panel: #121a22;
+        --panel-2: #18232d;
+        --text: #eef4f8;
+        --muted: #9fb0bd;
+        --line: #2d3a45;
+        --accent: #36c6a8;
+        --danger: #ef5350;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, "Segoe UI", Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      main {
+        display: grid;
+        grid-template-columns: 340px minmax(0, 1fr);
+        min-height: 100vh;
+      }
+
+      aside {
+        border-right: 1px solid var(--line);
+        background: #0f171e;
+        padding: 24px;
+      }
+
+      section {
+        padding: 28px;
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      h2 {
+        font-size: 18px;
+        margin-bottom: 12px;
+      }
+
+      p {
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      label {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+        margin: 18px 0 8px;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 11px 12px;
+        font: inherit;
+      }
+
+      textarea {
+        min-height: 140px;
+        resize: vertical;
+      }
+
+      button {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--panel-2);
+        color: var(--text);
+        padding: 10px 14px;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      button.primary {
+        border-color: #2cae95;
+        background: #1d6f62;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 18px;
+        margin-bottom: 18px;
+      }
+
+      .status {
+        min-height: 40px;
+        color: var(--muted);
+        white-space: pre-wrap;
+      }
+
+      .ok {
+        color: var(--accent);
+      }
+
+      .bad {
+        color: var(--danger);
+      }
+
+      pre {
+        margin: 0;
+        max-height: 360px;
+        overflow: auto;
+        white-space: pre-wrap;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #071016;
+        padding: 14px;
+        color: #d8e6ee;
+      }
+
+      .agent-shell {
+        display: grid;
+        grid-template-rows: minmax(280px, 1fr) auto;
+        gap: 14px;
+        min-height: 520px;
+      }
+
+      .conversation {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #0a1218;
+        padding: 18px;
+        overflow: auto;
+        max-height: 52vh;
+      }
+
+      .message {
+        max-width: 780px;
+        margin-bottom: 14px;
+        padding: 13px 15px;
+        border-radius: 8px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+
+      .message.user {
+        margin-left: auto;
+        background: #1c3544;
+      }
+
+      .message.agent {
+        margin-right: auto;
+        background: #14212b;
+      }
+
+      .message.system {
+        max-width: 100%;
+        border: 1px solid var(--line);
+        background: #101a22;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .composer {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 10px;
+      }
+
+      .composer textarea {
+        min-height: 58px;
+        max-height: 150px;
+      }
+
+      .activity {
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .activity-item {
+        border-left: 3px solid var(--accent);
+        padding: 8px 10px;
+        background: #0d171f;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .agent-state {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--accent);
+        font-size: 14px;
+        margin-top: 8px;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--accent);
+      }
+
+      .viewer-frame {
+        width: 100%;
+        height: 360px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #05080b;
+      }
+
+      @media (max-width: 860px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+
+        aside {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .composer {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <aside>
+        <div class="stack">
+          <div>
+            <h1>NeuralAgent Home</h1>
+            <p>Casa Puter para el agente. Puter maneja identidad y AI; el bridge local controla Windows con permiso.</p>
+          </div>
+
+          <button id="signInPuter" class="primary">Conectar Puter</button>
+          <div id="puterStatus" class="status">Puter sin conectar.</div>
+
+          <label for="bridgeUrl">Bridge local</label>
+          <input id="bridgeUrl" value="http://127.0.0.1:8000/local-bridge" />
+
+          <label for="bridgeToken">Token del bridge</label>
+          <input id="bridgeToken" type="password" placeholder="Pega local_bridge_token.txt" />
+
+          <button id="checkBridge">Probar bridge</button>
+          <div id="bridgeStatus" class="status">Bridge sin validar.</div>
+        </div>
+      </aside>
+
+      <section>
+        <div class="panel">
+          <h2>Control Local</h2>
+          <div class="row">
+            <button id="openNotepad" class="primary">Abrir Bloc de notas</button>
+            <button id="listProcesses">Listar procesos</button>
+            <button id="takeScreenshot">Ver captura</button>
+            <button id="extractUi">Extraer UI</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Ojos y Manos</h2>
+          <iframe class="viewer-frame" src="http://127.0.0.1:8001/viewer"></iframe>
+          <div class="row" style="margin-top: 12px;">
+            <input id="typeText" placeholder="Texto para teclear en la app enfocada" />
+            <button id="typeTextButton" class="primary">Teclear</button>
+            <button id="hotkeyCtrlS">Ctrl+S</button>
+            <button id="hotkeyAltTab">Alt+Tab</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>NeuralAgent</h2>
+          <div class="agent-state"><span class="dot"></span><span id="agentState">Esperando orden.</span></div>
+          <div class="agent-shell">
+            <div id="conversation" class="conversation">
+              <div class="message system">Puter conectado al hogar del agente. El bridge local ejecuta acciones autorizadas en Windows.</div>
+              <div class="message agent">Estoy listo. Puedo abrir apps, listar procesos y empezar a operar el escritorio por pasos conforme conectemos ojos/manos.</div>
+            </div>
+            <div class="composer">
+              <textarea id="prompt" placeholder="Escribe una orden para NeuralAgent...">puedes abrir el block de notas porfa?</textarea>
+              <button id="runWithBridge" class="primary">Ejecutar</button>
+              <button id="askPuter">Solo responder</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Actividad</h2>
+          <div id="activity" class="activity">
+            <div class="activity-item">Sistema listo.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Datos técnicos</h2>
+          <pre id="output">Listo.</pre>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      function write(data) {
+        $("output").textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+      }
+
+      function appendMessage(role, text) {
+        const el = document.createElement("div");
+        el.className = `message ${role}`;
+        el.textContent = text;
+        $("conversation").appendChild(el);
+        $("conversation").scrollTop = $("conversation").scrollHeight;
+      }
+
+      function addActivity(text) {
+        const el = document.createElement("div");
+        el.className = "activity-item";
+        el.textContent = text;
+        $("activity").prepend(el);
+      }
+
+      function setAgentState(text) {
+        $("agentState").textContent = text;
+      }
+
+      function setStatus(id, message, ok = true) {
+        const el = $(id);
+        el.textContent = message;
+        el.className = `status ${ok ? "ok" : "bad"}`;
+      }
+
+      async function autoLoadBridge() {
+        const config = window.NEURALAGENT_BRIDGE || {};
+        if (config.url) $("bridgeUrl").value = config.url;
+        if (config.token) $("bridgeToken").value = config.token;
+
+        if (!config.token) {
+          setStatus("bridgeStatus", "Bridge sin token automatico. Arranca NeuralAgent DEV y recarga.", false);
+          return;
+        }
+
+        try {
+          const data = await bridgeFetch("/health");
+          setStatus("bridgeStatus", `Bridge online. Token cargado automaticamente.\n${data.token_path}`);
+          addActivity("Bridge local validado.");
+          write(data);
+        } catch (error) {
+          setStatus("bridgeStatus", error.message, false);
+          addActivity("No se pudo validar el bridge local.");
+        }
+      }
+
+      async function bridgeFetch(path, options = {}) {
+        const base = $("bridgeUrl").value.replace(/\/$/, "");
+        const token = $("bridgeToken").value.trim();
+        const headers = {
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+        };
+        if (token) headers["X-Bridge-Token"] = token;
+        const response = await fetch(`${base}${path}`, {
+          ...options,
+          headers,
+        });
+        const text = await response.text();
+        let body;
+        try {
+          body = JSON.parse(text);
+        } catch {
+          body = text;
+        }
+        if (!response.ok) {
+          throw new Error(typeof body === "string" ? body : JSON.stringify(body));
+        }
+        return body;
+      }
+
+      $("signInPuter").addEventListener("click", async () => {
+        try {
+          await puter.auth.signIn();
+          const user = await puter.auth.getUser();
+          setStatus("puterStatus", `Puter conectado: ${user.username || user.email || "usuario"}`);
+        } catch (error) {
+          setStatus("puterStatus", error.message, false);
+        }
+      });
+
+      $("checkBridge").addEventListener("click", async () => {
+        try {
+          const data = await bridgeFetch("/health");
+          setStatus("bridgeStatus", `Bridge online. Token: ${data.token_path}`);
+          write(data);
+        } catch (error) {
+          setStatus("bridgeStatus", error.message, false);
+        }
+      });
+
+      $("openNotepad").addEventListener("click", async () => {
+        try {
+          setAgentState("Ejecutando accion local...");
+          addActivity("Orden directa: abrir Bloc de notas.");
+          const data = await bridgeFetch("/actions", {
+            method: "POST",
+            body: JSON.stringify({ action: "open_app", app_name: "notepad" }),
+          });
+          appendMessage("agent", "Listo. Abrí el Bloc de notas.");
+          setAgentState("Tarea completada.");
+          write(data);
+        } catch (error) {
+          appendMessage("agent", `No pude completar la accion: ${error.message}`);
+          setAgentState("Error.");
+          write(error.message);
+        }
+      });
+
+      $("listProcesses").addEventListener("click", async () => {
+        try {
+          setAgentState("Leyendo procesos...");
+          addActivity("Solicitando lista de procesos.");
+          const data = await bridgeFetch("/actions", {
+            method: "POST",
+            body: JSON.stringify({ action: "list_processes" }),
+          });
+          appendMessage("agent", `Estos son los primeros procesos detectados: ${data.data.processes.slice(0, 8).map((p) => p.name).join(", ")}.`);
+          setAgentState("Consulta completada.");
+          write(data);
+        } catch (error) {
+          appendMessage("agent", `No pude listar procesos: ${error.message}`);
+          setAgentState("Error.");
+          write(error.message);
+        }
+      });
+
+      function planLocalAction(text) {
+        const normalized = text.toLowerCase();
+        if (
+          normalized.includes("bloc de notas") ||
+          normalized.includes("block de notas") ||
+          normalized.includes("notepad")
+        ) {
+          return { action: "open_app", app_name: "notepad" };
+        }
+        if (normalized.includes("calculadora") || normalized.includes("calculator")) {
+          return { action: "open_app", app_name: "calculator" };
+        }
+        if (
+          normalized.includes("explorador") ||
+          normalized.includes("explorer") ||
+          normalized.includes("archivos")
+        ) {
+          return { action: "open_app", app_name: "explorer" };
+        }
+        if (normalized.includes("visual studio code") || normalized.includes("vscode")) {
+          return { action: "open_app", app_name: "vscode" };
+        }
+        if (
+          normalized.includes("reproductor") ||
+          normalized.includes("musica") ||
+          normalized.includes("música") ||
+          normalized.includes("media player") ||
+          normalized.includes("windows media") ||
+          normalized.includes("spotify")
+        ) {
+          return {
+            action: "open_app",
+            app_name: normalized.includes("spotify") ? "spotify" : "media player",
+          };
+        }
+        if (normalized.includes("procesos") || normalized.includes("process")) {
+          return { action: "list_processes" };
+        }
+        if (normalized.includes("captura") || normalized.includes("screenshot") || normalized.includes("pantalla")) {
+          return { action: "screenshot" };
+        }
+        if (normalized.includes("extrae ui") || normalized.includes("extraer ui") || normalized.includes("elementos")) {
+          return { action: "extract_ui" };
+        }
+        return null;
+      }
+
+      async function executeBridgePlan(plan, finalMessage = "Listo. Ejecute la accion solicitada.") {
+        setAgentState("Ejecutando con ojos/manos...");
+        addActivity(`Bridge action: ${plan.action}${plan.app_name ? ` -> ${plan.app_name}` : ""}.`);
+        const data = await bridgeFetch("/actions", {
+          method: "POST",
+          body: JSON.stringify(plan),
+        });
+        appendMessage("agent", finalMessage);
+        addActivity("Accion completada por el bridge.");
+        setAgentState("Tarea completada.");
+        write(data);
+        return data;
+      }
+
+      $("runWithBridge").addEventListener("click", async () => {
+        const userText = $("prompt").value.trim();
+        appendMessage("user", userText);
+        const plan = planLocalAction(userText);
+        if (!plan) {
+          const message = "Aun no tengo una accion local segura para esa orden. Prueba: abre el bloc de notas, abre calculadora, abre explorador, abre el reproductor de musica, listar procesos.";
+          appendMessage("agent", message);
+          addActivity("Orden recibida sin accion local disponible.");
+          write(message);
+          return;
+        }
+
+        try {
+          write({ status: "running", plan });
+          const data = await executeBridgePlan(
+            plan,
+            plan.action === "open_app"
+              ? `Listo. Ejecute la accion y abri ${plan.app_name}.`
+              : "Listo. Ejecute la accion solicitada."
+          );
+          if (plan.action === "open_app") {
+            write(data);
+          } else {
+            write(data);
+          }
+        } catch (error) {
+          appendMessage("agent", `No pude completar la accion: ${error.message}`);
+          addActivity("La accion fallo.");
+          setAgentState("Error.");
+          write(error.message);
+        }
+      });
+
+      $("takeScreenshot").addEventListener("click", async () => {
+        try {
+          const data = await executeBridgePlan({ action: "screenshot" }, "Captura tomada. La dejo en datos tecnicos.");
+          const b64 = data?.data?.screenshot_base64;
+          if (b64) {
+            $("output").innerHTML = "";
+            const img = document.createElement("img");
+            img.src = `data:image/png;base64,${b64}`;
+            img.style.maxWidth = "100%";
+            img.style.borderRadius = "8px";
+            $("output").appendChild(img);
+          }
+        } catch (error) {
+          appendMessage("agent", `No pude tomar captura: ${error.message}`);
+          write(error.message);
+        }
+      });
+
+      $("extractUi").addEventListener("click", async () => {
+        try {
+          await executeBridgePlan({ action: "extract_ui" }, "Extraje los elementos interactivos visibles.");
+        } catch (error) {
+          appendMessage("agent", `No pude extraer UI: ${error.message}`);
+          write(error.message);
+        }
+      });
+
+      $("typeTextButton").addEventListener("click", async () => {
+        const text = $("typeText").value;
+        if (!text) return;
+        try {
+          await executeBridgePlan({ action: "type_text", text }, "Listo. Escribi el texto en la ventana enfocada.");
+        } catch (error) {
+          appendMessage("agent", `No pude escribir: ${error.message}`);
+          write(error.message);
+        }
+      });
+
+      $("hotkeyCtrlS").addEventListener("click", async () => {
+        try {
+          await executeBridgePlan({ action: "hotkey", keys: ["ctrl", "s"] }, "Listo. Envie Ctrl+S.");
+        } catch (error) {
+          appendMessage("agent", `No pude enviar Ctrl+S: ${error.message}`);
+          write(error.message);
+        }
+      });
+
+      $("hotkeyAltTab").addEventListener("click", async () => {
+        try {
+          await executeBridgePlan({ action: "hotkey", keys: ["alt", "tab"] }, "Listo. Envie Alt+Tab.");
+        } catch (error) {
+          appendMessage("agent", `No pude enviar Alt+Tab: ${error.message}`);
+          write(error.message);
+        }
+      });
+
+      $("askPuter").addEventListener("click", async () => {
+        try {
+          const userText = $("prompt").value.trim();
+          appendMessage("user", userText);
+          setAgentState("Consultando Puter AI...");
+          addActivity("Consulta enviada a Puter AI sin ejecutar acciones locales.");
+          const response = await puter.ai.chat(userText);
+          const content = response?.message?.content || response?.content || JSON.stringify(response, null, 2);
+          appendMessage("agent", content);
+          setAgentState("Respuesta lista.");
+          write(response);
+        } catch (error) {
+          appendMessage("agent", `Puter AI no respondio correctamente: ${error.message}`);
+          setAgentState("Error.");
+          write(error.message);
+        }
+      });
+
+      autoLoadBridge();
+    </script>
+  </body>
+</html>

@@ -727,11 +727,7 @@ function createWindow() {
 
   const startURL = isDev
     ? 'http://localhost:6763'
-    : url.format({
-        pathname: path.join(__dirname, 'neuralagent-app', 'build', 'index.html'),
-        protocol: 'file:',
-        slashes: true,
-      });
+    : `file://${path.join(__dirname, 'neuralagent-app', 'build', 'index.html')}`;
 
   mainWindow.loadURL(startURL);
 

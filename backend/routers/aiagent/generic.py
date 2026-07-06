@@ -5,7 +5,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import SystemMessage, HumanMessage
 import json
 from utils import ai_prompts
-from utils.procedures import CustomError, extract_json
+from utils.procedures import CustomError, extract_json, normalize_llm_error
 from dependencies.auth_dependencies import get_current_user_dependency
 from db.models import (User, Thread, ThreadStatus, ThreadTask, ThreadTaskStatus, ThreadMessage,
                        ThreadChatType, ThreadChatFromChoices, ThreadTaskPlan, ThreadTaskPlanStatus,
@@ -18,6 +18,107 @@ from base64 import b64decode
 import io
 import os
 from utils import upload_helper
+
+
+def build_fallback_plan(task_text: str) -> dict:
+    normalized = (task_text or '').lower()
+    if 'notepad' in normalized or 'bloc de notas' in normalized or 'block de notas' in normalized:
+        return {'subtasks': [{'subtask': 'Open Notepad', 'type': 'desktop_subtask'}]}
+    if is_music_player_request(normalized):
+        return {'subtasks': [{'subtask': 'Open a music player', 'type': 'desktop_subtask'}]}
+    return {'subtasks': [{'subtask': task_text or 'Complete the requested desktop task', 'type': 'desktop_subtask'}]}
+
+
+def is_music_player_request(text: str) -> bool:
+    return any(
+        hint in text
+        for hint in (
+            'reproductor',
+            'musica',
+            'música',
+            'media player',
+            'windows media',
+            'groove',
+            'spotify',
+            'player',
+        )
+    )
+
+
+def music_player_is_running(current_running_apps: list[dict]) -> bool:
+    return any(
+        app_is_running(current_running_apps, app_name)
+        for app_name in ('wmplayer', 'media player', 'music.ui', 'spotify')
+    )
+
+
+def app_is_running(current_running_apps: list[dict], app_name: str) -> bool:
+    needle = app_name.lower()
+    for app in current_running_apps or []:
+        values = [str(value).lower() for value in app.values()]
+        if any(needle in value for value in values):
+            return True
+    return False
+
+
+def build_fallback_next_step(task_text: str, subtask_text: str, current_running_apps: list[dict]) -> dict:
+    normalized = f'{task_text or ""} {subtask_text or ""}'.lower()
+    if 'notepad' in normalized or 'bloc de notas' in normalized or 'block de notas' in normalized:
+        if app_is_running(current_running_apps, 'notepad'):
+            return {
+                'current_state': {
+                    'evaluation_previous_goal': 'Success - Notepad is running.',
+                    'memory': 'Notepad has been opened successfully.',
+                    'save_to_memory': False,
+                    'next_goal': 'Complete the subtask because Notepad is open.',
+                },
+                'actions': [{'action': 'subtask_completed', 'params': {}}],
+                'agent_fallback': True,
+            }
+        return {
+            'current_state': {
+                'evaluation_previous_goal': 'Unknown - Notepad is not running yet.',
+                'memory': 'The goal is to open Notepad.',
+                'save_to_memory': False,
+                'next_goal': 'Launch Notepad.',
+            },
+            'actions': [{'action': 'launch_app', 'params': {'app_name': 'Notepad'}}],
+            'agent_fallback': True,
+        }
+
+    if is_music_player_request(normalized):
+        if music_player_is_running(current_running_apps):
+            return {
+                'current_state': {
+                    'evaluation_previous_goal': 'Success - A music player is running.',
+                    'memory': 'A music player has been opened successfully.',
+                    'save_to_memory': False,
+                    'next_goal': 'Complete the subtask because a music player is open.',
+                },
+                'actions': [{'action': 'subtask_completed', 'params': {}}],
+                'agent_fallback': True,
+            }
+        return {
+            'current_state': {
+                'evaluation_previous_goal': 'Unknown - No music player is running yet.',
+                'memory': 'The goal is to open a Windows music player.',
+                'save_to_memory': False,
+                'next_goal': 'Launch a Windows music player.',
+            },
+            'actions': [{'action': 'launch_app', 'params': {'app_name': 'Windows Media Player'}}],
+            'agent_fallback': True,
+        }
+
+    return {
+        'current_state': {
+            'evaluation_previous_goal': 'Failed - The local fallback does not know how to complete this task without the AI provider.',
+            'memory': 'The configured AI provider is unavailable for this task.',
+            'save_to_memory': False,
+            'next_goal': 'Report the task as failed.',
+        },
+        'actions': [{'action': 'subtask_failed', 'params': {}}],
+        'agent_fallback': True,
+    }
 
 
 router = APIRouter(
@@ -94,9 +195,13 @@ def current_subtask_request(tid: str, current_subtask_request_obj: CurrentSubtas
             HumanMessage(content=plan_user_message),
         ])
 
-        chain = plan_prompt | llm
-        plan_response = chain.invoke({})
-        plan_response_data = extract_json(plan_response.content)
+        try:
+            chain = plan_prompt | llm
+            plan_response = chain.invoke({})
+            plan_response_data = extract_json(plan_response.content)
+        except Exception as exc:
+            print(f'[aiagent] planner unavailable, using local fallback: {normalize_llm_error(exc)}')
+            plan_response_data = build_fallback_plan(task.task_text)
 
         plan = plan_response_data.get('subtasks')
 
@@ -316,29 +421,33 @@ def next_step(tid: str, next_step_req: NextStepRequest, db: Session = Depends(ge
         HumanMessage(content=computer_use_user_message),
     ])
 
-    chain = prompt | llm
-    response = chain.invoke({})
+    try:
+        chain = prompt | llm
+        response = chain.invoke({})
 
-    print('Token Usage: ', response.usage_metadata)
+        print('Token Usage: ', response.usage_metadata)
 
-    response_data = None
-    if task.extended_thinking_mode is True:
-        for response_item in response.content:
-            if response_item.get('type') == 'reasoning_content':
-                thinking_message = ThreadMessage(
-                    thread_id=instance.id,
-                    thread_task_id=task.id,
-                    thread_chat_type=ThreadChatType.THINKING,
-                    thread_chat_from=ThreadChatFromChoices.FROM_AI,
-                    chain_of_thought=response_item.get('reasoning_content', {}).get('text'),
-                )
-                db.add(thinking_message)
-                db.commit()
-                db.refresh(thinking_message)
-            elif response_item.get('type') == 'text':
-                response_data = extract_json(response_item.get('text'))
-    else:
-        response_data = extract_json(response.content)
+        response_data = None
+        if task.extended_thinking_mode is True:
+            for response_item in response.content:
+                if response_item.get('type') == 'reasoning_content':
+                    thinking_message = ThreadMessage(
+                        thread_id=instance.id,
+                        thread_task_id=task.id,
+                        thread_chat_type=ThreadChatType.THINKING,
+                        thread_chat_from=ThreadChatFromChoices.FROM_AI,
+                        chain_of_thought=response_item.get('reasoning_content', {}).get('text'),
+                    )
+                    db.add(thinking_message)
+                    db.commit()
+                    db.refresh(thinking_message)
+                elif response_item.get('type') == 'text':
+                    response_data = extract_json(response_item.get('text'))
+        else:
+            response_data = extract_json(response.content)
+    except Exception as exc:
+        print(f'[aiagent] computer-use unavailable, using local fallback: {normalize_llm_error(exc)}')
+        response_data = build_fallback_next_step(task.task_text, current_subtask.subtask_text, next_step_req.current_running_apps)
 
     ai_message = ThreadMessage(
         thread_id=instance.id,

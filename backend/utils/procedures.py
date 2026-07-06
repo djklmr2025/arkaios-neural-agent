@@ -60,3 +60,20 @@ def extract_json_array(raw):
     if not match:
         raise ValueError("No valid JSON array found in model response.")
     return json.loads(match.group(0))
+
+
+def normalize_llm_error(exc: Exception) -> str:
+    message = str(exc)
+    lower = message.lower()
+    if "this endpoint is only available to user sessions" in lower:
+        return (
+            "Puter_API_Token_Invalid: Puter rejected the server API call. "
+            "Use a Puter dashboard API token, not a browser login/session token."
+        )
+    if "resource_exhausted" in lower or "quota" in lower:
+        return "LLM_Quota_Exceeded: The configured model provider has no quota available right now."
+    if "missing gemini_api_key" in lower:
+        return "Missing_GEMINI_API_KEY"
+    if "missing puter_auth_token" in lower:
+        return "Missing_PUTER_AUTH_TOKEN"
+    return f"LLM_Error: {message}"

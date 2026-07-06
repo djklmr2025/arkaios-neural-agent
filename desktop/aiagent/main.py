@@ -73,6 +73,15 @@ WINDOWS_APP_ALIASES = {
     "calculator": "calc.exe",
     "calculadora": "calc.exe",
     "paint": "mspaint.exe",
+    "media player": "mswindowsmusic:",
+    "windows media player": "mswindowsmusic:",
+    "windows media": "mswindowsmusic:",
+    "reproductor": "mswindowsmusic:",
+    "reproductor de musica": "mswindowsmusic:",
+    "reproductor de música": "mswindowsmusic:",
+    "musica": "mswindowsmusic:",
+    "música": "mswindowsmusic:",
+    "spotify": "spotify:",
 }
 
 
@@ -84,7 +93,9 @@ def windows_app_command(app_name):
 def windows_direct_app_launch(app_name):
     try:
         command = windows_app_command(app_name)
-        if command.lower().endswith(".exe"):
+        if command.endswith(":"):
+            os.startfile(command)
+        elif command.lower().endswith(".exe"):
             subprocess.Popen([command], shell=False)
         else:
             subprocess.Popen(f'start "" "{command}"', shell=True)

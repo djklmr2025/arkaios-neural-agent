@@ -7,6 +7,11 @@ from sqlmodel import Session, create_engine
 
 
 load_dotenv(override=True)
+app_data_root_for_env = os.getenv("LOCALAPPDATA") or os.getenv("APPDATA")
+if app_data_root_for_env:
+    app_runtime_env = Path(app_data_root_for_env) / "NeuralAgent" / "API_KEYS.env"
+    if app_runtime_env.exists():
+        load_dotenv(dotenv_path=app_runtime_env, override=True)
 
 
 def _default_sqlite_url() -> str:

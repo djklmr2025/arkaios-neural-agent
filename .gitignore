@@ -9,6 +9,11 @@
 .env
 *.mp4
 *.zip
+puter_home/bridge-config.js
+.tmp_pyinstaller/
+tmp_*.log
+tmp_*.png
+tmp_*.txt
 backend/build/
 desktop/agent_build/
 desktop/dist/

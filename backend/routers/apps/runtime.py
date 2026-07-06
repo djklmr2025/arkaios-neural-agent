@@ -6,7 +6,7 @@ from dependencies.auth_dependencies import get_current_user_dependency
 from db.models import User
 from schemas.runtime import RuntimeChatRequest, RuntimePlanRequest
 from utils import ai_prompts, llm_provider
-from utils.procedures import CustomError, extract_json
+from utils.procedures import CustomError, extract_json, normalize_llm_error
 
 
 router = APIRouter(
@@ -43,7 +43,7 @@ def runtime_chat(request: RuntimeChatRequest, user: User = Depends(get_current_u
             "message": response.content,
         }
     except Exception as exc:
-        raise CustomError(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Runtime chat failed: {str(exc)}")
+        raise CustomError(status.HTTP_400_BAD_REQUEST, normalize_llm_error(exc))
 
 
 @router.post("/plan")
@@ -74,4 +74,4 @@ def runtime_plan(request: RuntimePlanRequest, user: User = Depends(get_current_u
             "plan": extract_json(response.content),
         }
     except Exception as exc:
-        raise CustomError(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Runtime planning failed: {str(exc)}")
+        raise CustomError(status.HTTP_400_BAD_REQUEST, normalize_llm_error(exc))

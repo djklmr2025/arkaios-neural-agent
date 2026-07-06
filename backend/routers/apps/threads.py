@@ -6,12 +6,14 @@ from db.models import (User, Thread, ThreadStatus, ThreadTask, ThreadMessage, Th
                        ThreadTaskStatus, ThreadTaskPlan, ThreadTaskPlanStatus, PlanSubtask, SubtaskStatus)
 from schemas.threads import ListThread, CreateThread, UpdateThread, ListThreadMessage, RetrieveThread, SendMessageObj
 from typing import List
-from utils.procedures import CustomError, extract_json
+from utils.procedures import CustomError, extract_json, normalize_llm_error
 from utils import ai_helpers
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage
 from utils import ai_prompts, llm_provider
 import json
+import re
+import datetime
 
 
 router = APIRouter(
@@ -19,6 +21,92 @@ router = APIRouter(
     tags=['apps', 'threads'],
     dependencies=[Depends(get_current_user_dependency)]
 )
+
+
+DESKTOP_TASK_HINTS = (
+    'abre', 'abrir', 'abreme', 'abrir', 'open', 'launch', 'ejecuta', 'inicia',
+    'mueve', 'click', 'clic', 'teclea', 'escribe', 'manda', 'envia', 'envía',
+    'busca', 'descarga', 'instala', 'cierra', 'guarda', 'crea', 'haz',
+    'usa', 'entra', 've a', 'navega', 'notepad', 'bloc de notas', 'chrome',
+    'whatsapp', 'vscode', 'visual studio code', 'reproductor', 'musica',
+    'música', 'media player', 'windows media', 'spotify'
+)
+
+
+def fallback_classifier_response(task_text: str, background_mode: bool = False, extended_thinking_mode: bool = False) -> dict:
+    normalized = (task_text or '').strip().lower()
+    is_desktop_task = any(re.search(rf'\b{re.escape(hint)}\b', normalized) for hint in DESKTOP_TASK_HINTS)
+    if is_desktop_task:
+        return {
+            'type': 'desktop_task',
+            'response': 'Claro, lo hago ahora.',
+            'is_browser_task': any(word in normalized for word in ('web', 'browser', 'navega', 'chrome', 'busca')),
+            'needs_memory_from_previous_tasks': any(word in normalized for word in ('anterior', 'antes', 'mismo', 'otra vez')),
+            'is_background_mode_requested': bool(background_mode),
+            'is_extended_thinking_mode_requested': bool(extended_thinking_mode),
+            'classifier_fallback': True,
+        }
+
+    return {
+        'type': 'inquiry',
+        'response': 'Estoy aqui y listo para ayudarte.',
+        'is_browser_task': False,
+        'needs_memory_from_previous_tasks': False,
+        'is_background_mode_requested': bool(background_mode),
+        'is_extended_thinking_mode_requested': bool(extended_thinking_mode),
+        'classifier_fallback': True,
+    }
+
+
+def classify_user_task(task_text: str, previous_tasks_arr: list, background_mode: bool = False, extended_thinking_mode: bool = False) -> dict:
+    try:
+        llm = llm_provider.get_llm(agent='classifier', temperature=0.1)
+        prompt = ChatPromptTemplate.from_messages([
+            ('system', ai_prompts.CLASSIFIER_AGENT_PROMPT),
+            HumanMessage(f'Previous Tasks (Limited to 10): \n {json.dumps(previous_tasks_arr)}'),
+            ('user', task_text),
+        ])
+        chain = prompt | llm
+        response = chain.invoke({})
+        return extract_json(response.content)
+    except Exception as exc:
+        print(f'[threads] classifier unavailable, using local fallback: {normalize_llm_error(exc)}')
+        return fallback_classifier_response(task_text, background_mode, extended_thinking_mode)
+
+
+def cancel_stale_running_tasks(db: Session, user: User, max_age_seconds: int = 60) -> None:
+    cutoff = datetime.datetime.now() - datetime.timedelta(seconds=max_age_seconds)
+    stale_threads = db.exec(select(Thread).where(and_(
+        Thread.user_id == user.id,
+        Thread.status == ThreadStatus.WORKING,
+        Thread.updated_at <= cutoff,
+    ))).all()
+    stale_thread_ids = [thread.id for thread in stale_threads]
+    if not stale_thread_ids:
+        return
+
+    db.exec(update(Thread).where(Thread.id.in_(stale_thread_ids)).values(
+        status=ThreadStatus.STANDBY,
+    ))
+    db.exec(update(ThreadTask).where(and_(
+        ThreadTask.thread_id.in_(stale_thread_ids),
+        ThreadTask.status == ThreadTaskStatus.WORKING,
+    )).values(
+        status=ThreadTaskStatus.CANCELED,
+    ))
+    db.exec(update(ThreadTaskPlan).where(and_(
+        ThreadTaskPlan.thread_task.has(ThreadTask.thread_id.in_(stale_thread_ids)),
+        ThreadTaskPlan.status == ThreadTaskPlanStatus.ACTIVE,
+    )).values(
+        status=ThreadTaskPlanStatus.CANCELED,
+    ))
+    db.exec(update(PlanSubtask).where(and_(
+        PlanSubtask.plan.has(ThreadTaskPlan.thread_task.has(ThreadTask.thread_id.in_(stale_thread_ids))),
+        PlanSubtask.status == SubtaskStatus.ACTIVE,
+    )).values(
+        status=SubtaskStatus.CANCELED,
+    ))
+    db.commit()
 
 
 @router.get('', response_model=List[ListThread])
@@ -34,14 +122,14 @@ def list_threads(db: Session = Depends(get_session), user: User = Depends(get_cu
 def create_thread(create_thread_obj: CreateThread, db: Session = Depends(get_session),
                   user: User = Depends(get_current_user_dependency)):
 
+    cancel_stale_running_tasks(db, user)
+
     working_threads = db.exec(select(Thread).where(and_(
         Thread.user_id == user.id,
         Thread.status == ThreadStatus.WORKING
     )))
     if len(working_threads.all()) > 0:
         raise CustomError(status.HTTP_400_BAD_REQUEST, 'Running_Thread')
-
-    llm = llm_provider.get_llm(agent='classifier', temperature=0.1)
 
     previous_tasks = db.exec(select(ThreadTask).where(and_(
         ThreadTask.thread.has(Thread.user_id == user.id),
@@ -54,16 +142,12 @@ def create_thread(create_thread_obj: CreateThread, db: Session = Depends(get_ses
             'status': previous_task.status,
         })
 
-    prompt = ChatPromptTemplate.from_messages([
-        ('system', ai_prompts.CLASSIFIER_AGENT_PROMPT),
-        HumanMessage(f'Previous Tasks (Limited to 10): \n {json.dumps(previous_tasks_arr)}'),
-        ('user', create_thread_obj.task),
-    ])
-
-    chain = prompt | llm
-
-    response = chain.invoke({})
-    response_data = extract_json(response.content)
+    response_data = classify_user_task(
+        create_thread_obj.task,
+        previous_tasks_arr,
+        create_thread_obj.background_mode,
+        create_thread_obj.extended_thinking_mode,
+    )
 
     if response_data.get('type') == 'desktop_task':
         if create_thread_obj.background_mode is True or response_data.get('is_background_mode_requested', False) is True:
@@ -199,19 +283,35 @@ def thread_messages(tid: str, db: Session = Depends(get_session), user: User = D
 
 @router.post('/cancel_all_running_tasks')
 def cancel_all_running_tasks(db: Session = Depends(get_session), user: User = Depends(get_current_user_dependency)):
-    db.exec(update(Thread).where(Thread.status == ThreadStatus.WORKING).values(
+    user_thread_filter = ThreadTask.thread.has(Thread.user_id == user.id)
+    user_plan_filter = ThreadTaskPlan.thread_task.has(ThreadTask.thread.has(Thread.user_id == user.id))
+    user_subtask_filter = PlanSubtask.plan.has(ThreadTaskPlan.thread_task.has(ThreadTask.thread.has(Thread.user_id == user.id)))
+
+    db.exec(update(Thread).where(and_(
+        Thread.user_id == user.id,
+        Thread.status == ThreadStatus.WORKING,
+    )).values(
         status=ThreadStatus.STANDBY,
     ))
 
-    db.exec(update(ThreadTask).where(ThreadTask.status == ThreadTaskStatus.WORKING).values(
+    db.exec(update(ThreadTask).where(and_(
+        user_thread_filter,
+        ThreadTask.status == ThreadTaskStatus.WORKING,
+    )).values(
         status=ThreadTaskStatus.CANCELED,
     ))
 
-    db.exec(update(ThreadTaskPlan).where(ThreadTaskPlan.status == ThreadTaskPlanStatus.ACTIVE).values(
+    db.exec(update(ThreadTaskPlan).where(and_(
+        user_plan_filter,
+        ThreadTaskPlan.status == ThreadTaskPlanStatus.ACTIVE,
+    )).values(
         status=ThreadTaskPlanStatus.CANCELED,
     ))
 
-    db.exec(update(PlanSubtask).where(PlanSubtask.status == SubtaskStatus.ACTIVE).values(
+    db.exec(update(PlanSubtask).where(and_(
+        user_subtask_filter,
+        PlanSubtask.status == SubtaskStatus.ACTIVE,
+    )).values(
         status=SubtaskStatus.CANCELED,
     ))
 
@@ -284,14 +384,14 @@ def send_message(tid: str, obj: SendMessageObj, db: Session = Depends(get_sessio
     if not instance:
         raise CustomError(status.HTTP_404_NOT_FOUND, 'Thread not found')
 
+    cancel_stale_running_tasks(db, user)
+
     working_threads = db.exec(select(Thread).where(and_(
         Thread.user_id == user.id,
         Thread.status == ThreadStatus.WORKING
     )))
     if len(working_threads.all()) > 0:
         raise CustomError(status.HTTP_400_BAD_REQUEST, 'Running_Thread')
-
-    llm = llm_provider.get_llm(agent='classifier', temperature=0.1)
 
     previous_tasks = db.exec(select(ThreadTask).where(and_(
         ThreadTask.thread.has(Thread.user_id == user.id),
@@ -304,16 +404,12 @@ def send_message(tid: str, obj: SendMessageObj, db: Session = Depends(get_sessio
             'status': previous_task.status,
         })
 
-    prompt = ChatPromptTemplate.from_messages([
-        ('system', ai_prompts.CLASSIFIER_AGENT_PROMPT),
-        HumanMessage(f'Previous Tasks (Limited to 10): \n {json.dumps(previous_tasks_arr)}'),
-        ('user', obj.text),
-    ])
-
-    chain = prompt | llm
-
-    response = chain.invoke({})
-    response_data = extract_json(response.content)
+    response_data = classify_user_task(
+        obj.text,
+        previous_tasks_arr,
+        obj.background_mode,
+        obj.extended_thinking_mode,
+    )
 
     if response_data.get('type') == 'desktop_task':
         if obj.background_mode is True or response_data.get('is_background_mode_requested', False) is True:

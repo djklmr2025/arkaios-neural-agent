@@ -14,7 +14,7 @@ if not keys:
     raise SystemExit("No Gemini keys found in environment")
 
 for key in keys:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"
     resp = requests.post(url, json={
         "contents": [{"parts": [{"text": "Hello"}]}]
     }, timeout=10)

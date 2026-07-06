@@ -4,12 +4,14 @@ from dotenv import load_dotenv
 from botocore.config import Config
 
 from langchain_core.language_models.chat_models import BaseChatModel
+# Load repo defaults first, then user runtime config from AppData.
+# API_KEYS.env must win so Puter/API key changes survive backend restarts.
+load_dotenv(override=True)
 app_data = os.getenv('LOCALAPPDATA') or os.getenv('APPDATA')
 if app_data:
     api_keys_path = os.path.join(app_data, 'NeuralAgent', 'API_KEYS.env')
     if os.path.exists(api_keys_path):
         load_dotenv(dotenv_path=api_keys_path, override=True)
-load_dotenv(override=True)
 
 
 SUPPORTED_MODEL_TYPES = ("google", "openai", "azure_openai", "anthropic", "bedrock", "puter")
