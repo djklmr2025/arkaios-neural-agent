@@ -17,6 +17,7 @@ from utils.safety_guard import evaluate_actions
 from base64 import b64decode
 import io
 import os
+import requests
 from utils import upload_helper
 
 
@@ -61,8 +62,84 @@ def app_is_running(current_running_apps: list[dict], app_name: str) -> bool:
     return False
 
 
+def build_proxy_planned_next_step(task_text: str, subtask_text: str) -> dict | None:
+    planner_url = os.getenv('ARKAIOS_ACTION_PLANNER_URL')
+    if not planner_url:
+        return None
+
+    objective = f'{task_text or ""}\n{subtask_text or ""}'.strip()
+    headers = {'Content-Type': 'application/json'}
+    planner_key = os.getenv('ARKAIOS_ACTION_PLANNER_KEY') or os.getenv('PROXY_API_KEY')
+    if planner_key:
+        headers['Authorization'] = f'Bearer {planner_key}'
+
+    try:
+        response = requests.post(
+            planner_url,
+            headers=headers,
+            json={
+                'objective': objective,
+                'source': 'neuralagent-local-fallback',
+                'capabilities': ['launch_app'],
+            },
+            timeout=8,
+        )
+        response.raise_for_status()
+        data = response.json()
+    except Exception as exc:
+        print(f'[aiagent] action planner unavailable, using built-in fallback: {exc}')
+        return None
+
+    if not data.get('approved') or not data.get('action'):
+        return None
+
+    planned_action = data['action']
+    action_name = planned_action.get('action')
+    params = planned_action.get('params') or {}
+    if action_name != 'open_app':
+        return None
+
+    app_name = params.get('app_name')
+    if not app_name:
+        return None
+
+    return {
+        'current_state': {
+            'evaluation_previous_goal': 'Unknown - The cloud action planner approved a safe local app launch.',
+            'memory': f'The approved action is to open {app_name}.',
+            'save_to_memory': False,
+            'next_goal': f'Launch {app_name}.',
+        },
+        'actions': [{'action': 'launch_app', 'params': {'app_name': app_name}}],
+        'agent_fallback': True,
+        'action_planner': {
+            'source': data.get('source'),
+            'risk': data.get('risk'),
+            'confidence': data.get('confidence'),
+            'reason': data.get('reason'),
+        },
+    }
+
+
 def build_fallback_next_step(task_text: str, subtask_text: str, current_running_apps: list[dict]) -> dict:
     normalized = f'{task_text or ""} {subtask_text or ""}'.lower()
+    proxy_plan = build_proxy_planned_next_step(task_text, subtask_text)
+    if proxy_plan:
+        planned_app = proxy_plan['actions'][0]['params']['app_name']
+        if app_is_running(current_running_apps, planned_app):
+            return {
+                'current_state': {
+                    'evaluation_previous_goal': f'Success - {planned_app} is running.',
+                    'memory': f'{planned_app} has been opened successfully.',
+                    'save_to_memory': False,
+                    'next_goal': f'Complete the subtask because {planned_app} is open.',
+                },
+                'actions': [{'action': 'subtask_completed', 'params': {}}],
+                'agent_fallback': True,
+                'action_planner': proxy_plan.get('action_planner'),
+            }
+        return proxy_plan
+
     if 'notepad' in normalized or 'bloc de notas' in normalized or 'block de notas' in normalized:
         if app_is_running(current_running_apps, 'notepad'):
             return {

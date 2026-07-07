@@ -117,6 +117,17 @@ PUTER_OPENAI_BASE_URL=https://api.puter.com/puterai/openai/v1/
 
 El frontend incluye Puter.js para login en webview. Para acciones desktop reales, el backend necesita un token de usuario porque el daemon Python no corre dentro del navegador.
 
+### 5. Planner de acciones seguro
+
+Para que un agente web/nube valide una intencion antes de tocar Windows, configura:
+
+```env
+ARKAIOS_ACTION_PLANNER_URL=https://arkaios-service-proxy.onrender.com/v1/actions/plan
+ARKAIOS_ACTION_PLANNER_KEY=tu_proxy_api_key
+```
+
+El planner no ejecuta acciones. Devuelve JSON aprobado/rechazado; NeuralAgent convierte solo acciones seguras soportadas, por ejemplo `open_app` -> `launch_app`.
+
 Endpoints utiles para extensiones, tools y labs:
 
 - `GET /apps/runtime/capabilities`: descubre proveedores y agentes configurados.
