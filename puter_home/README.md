@@ -32,13 +32,17 @@ http://127.0.0.1:4177
 %LOCALAPPDATA%\NeuralAgent\local_bridge_token.txt
 ```
 
-5. Prueba `Abrir Bloc de notas`.
+5. Prueba `Abrir Bloc de notas` o escribe `abre el reproductor de musica`.
 
 ## Seguridad
 
-El bridge no expone shell general. En este MVP solo permite:
+El bridge no expone shell general. Para ordenes de texto, esta app llama `POST /local-bridge/actions/plan`; el backend consulta el planner remoto configurado con `ARKAIOS_ACTION_PLANNER_URL` y ejecuta solo JSON aprobado.
+
+El bridge solo permite:
 
 - `open_app` para una lista limitada de apps conocidas.
 - `list_processes` para diagnostico.
+- `screenshot` con confirmacion.
+- `focus_app` para apps permitidas.
 
 La app Puter no debe recibir permisos amplios de sistema sin pairing local y confirmacion del usuario.

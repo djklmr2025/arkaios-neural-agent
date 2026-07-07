@@ -473,7 +473,7 @@
         }
       });
 
-      function planLocalAction(text) {
+      function fallbackLocalAction(text) {
         const normalized = text.toLowerCase();
         if (
           normalized.includes("bloc de notas") ||
@@ -534,31 +534,54 @@
         return data;
       }
 
+      async function executePlannedIntent(text) {
+        setAgentState("Consultando planner seguro...");
+        addActivity("Enviando intencion al planner por el bridge local.");
+        try {
+          const data = await bridgeFetch("/actions/plan", {
+            method: "POST",
+            body: JSON.stringify({
+              objective: text,
+              source: "arkaios-puter-home",
+              execute: true,
+              allow_requires_confirmation: true,
+            }),
+          });
+          if (data.status === "rejected") {
+            throw new Error(data.message || "Planner rechazo la accion.");
+          }
+          if (data.status === "confirmation_required") {
+            appendMessage("agent", "El planner aprobo la accion, pero requiere confirmacion antes de ejecutarla.");
+          } else {
+            appendMessage("agent", "Listo. El planner aprobo la accion y el bridge la ejecuto.");
+          }
+          addActivity(`Planner status: ${data.status}.`);
+          setAgentState("Tarea completada.");
+          write(data);
+          return data;
+        } catch (error) {
+          const fallback = fallbackLocalAction(text);
+          if (
+            fallback &&
+            (
+              error.message.includes("Action_Planner_Not_Configured") ||
+              error.message.includes("Action_Planner_Unavailable") ||
+              error.message.includes("Not Found")
+            )
+          ) {
+            addActivity("Planner no disponible. Usando fallback local de desarrollo.");
+            return executeBridgePlan(fallback, "Planner no disponible. Use fallback local compatible.");
+          }
+          throw error;
+        }
+      }
+
       $("runWithBridge").addEventListener("click", async () => {
         const userText = $("prompt").value.trim();
         appendMessage("user", userText);
-        const plan = planLocalAction(userText);
-        if (!plan) {
-          const message = "Aun no tengo una accion local segura para esa orden. Prueba: abre el bloc de notas, abre calculadora, abre explorador, abre el reproductor de musica, listar procesos.";
-          appendMessage("agent", message);
-          addActivity("Orden recibida sin accion local disponible.");
-          write(message);
-          return;
-        }
-
         try {
-          write({ status: "running", plan });
-          const data = await executeBridgePlan(
-            plan,
-            plan.action === "open_app"
-              ? `Listo. Ejecute la accion y abri ${plan.app_name}.`
-              : "Listo. Ejecute la accion solicitada."
-          );
-          if (plan.action === "open_app") {
-            write(data);
-          } else {
-            write(data);
-          }
+          write({ status: "planning", objective: userText });
+          await executePlannedIntent(userText);
         } catch (error) {
           appendMessage("agent", `No pude completar la accion: ${error.message}`);
           addActivity("La accion fallo.");
