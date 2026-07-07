@@ -11,6 +11,7 @@ import requests
 from fastapi import APIRouter, Header, Query, status
 
 from schemas.local_bridge import (
+    BridgeActionPlanRequest,
     BridgeActionRequest,
     BridgeActionResponse,
     BridgeInboxMessageRequest,
@@ -268,6 +269,63 @@ def _resolve_app(app_name: str | None) -> str:
     raise CustomError(status.HTTP_400_BAD_REQUEST, "Unsupported_App")
 
 
+def _planner_headers() -> dict:
+    planner_key = os.getenv("ARKAIOS_ACTION_PLANNER_KEY") or os.getenv("PROXY_API_KEY")
+    headers = {"Content-Type": "application/json"}
+    if planner_key:
+        headers["Authorization"] = f"Bearer {planner_key}"
+    return headers
+
+
+def _call_action_planner(request: BridgeActionPlanRequest) -> dict:
+    planner_url = os.getenv("ARKAIOS_ACTION_PLANNER_URL")
+    if not planner_url:
+        raise CustomError(status.HTTP_503_SERVICE_UNAVAILABLE, "Action_Planner_Not_Configured")
+
+    payload = {
+        "objective": request.objective,
+        "candidate_action": request.candidate_action,
+        "source": request.source,
+        "capabilities": [
+            "open_app",
+            "list_processes",
+            "focus_app",
+            "screenshot",
+        ],
+    }
+    try:
+        response = requests.post(
+            planner_url,
+            json=payload,
+            headers=_planner_headers(),
+            timeout=15,
+        )
+        response.raise_for_status()
+        return response.json()
+    except Exception as exc:
+        raise CustomError(status.HTTP_502_BAD_GATEWAY, f"Action_Planner_Unavailable: {exc}")
+
+
+def _planned_action_to_bridge_request(planned: dict) -> BridgeActionRequest:
+    action = planned.get("action") if isinstance(planned, dict) else None
+    if not isinstance(action, dict):
+        raise CustomError(status.HTTP_400_BAD_REQUEST, "Planner_Missing_Action")
+
+    action_name = action.get("action")
+    params = action.get("params") if isinstance(action.get("params"), dict) else {}
+
+    if action_name == "open_app":
+        return BridgeActionRequest(action="open_app", app_name=params.get("app_name"))
+    if action_name == "focus_app":
+        return BridgeActionRequest(action="focus_app", app_name=params.get("app_name"))
+    if action_name == "list_processes":
+        return BridgeActionRequest(action="list_processes")
+    if action_name == "screenshot":
+        return BridgeActionRequest(action="screenshot")
+
+    raise CustomError(status.HTTP_400_BAD_REQUEST, "Planner_Unsupported_Action")
+
+
 @router.get("/health")
 def health():
     return {
@@ -276,6 +334,7 @@ def health():
         "version": "0.3.0",
         "eyes_base_url": EYES_BASE_URL,
         "actions": [
+            "plan",
             "open_app",
             "list_processes",
             "focus_app",
@@ -698,6 +757,42 @@ def _eyes_post(path: str, payload: dict) -> dict:
         return response.json()
     except Exception as exc:
         raise CustomError(status.HTTP_502_BAD_GATEWAY, f"Eyes_Bridge_Unavailable: {exc}")
+
+
+@router.post("/actions/plan")
+def plan_action(request: BridgeActionPlanRequest, x_bridge_token: str | None = Header(default=None)):
+    _require_token(x_bridge_token)
+    planned = _call_action_planner(request)
+
+    if not planned.get("approved"):
+        return {
+            "status": "rejected",
+            "message": planned.get("reason") or "Action not approved",
+            "plan": planned,
+        }
+
+    if not request.execute:
+        return {
+            "status": "planned",
+            "message": "Action approved by planner",
+            "plan": planned,
+        }
+
+    if planned.get("requires_confirmation") and not request.allow_requires_confirmation:
+        return {
+            "status": "confirmation_required",
+            "message": "Planner approved the action, but confirmation is required before execution",
+            "plan": planned,
+        }
+
+    bridge_request = _planned_action_to_bridge_request(planned)
+    result = run_action(bridge_request, x_bridge_token)
+    return {
+        "status": "executed",
+        "message": "Planner approved and local bridge executed the action",
+        "plan": planned,
+        "result": result.dict(),
+    }
 
 
 @router.post("/actions", response_model=BridgeActionResponse)

@@ -29,6 +29,14 @@ class BridgeActionResponse(BaseModel):
     data: Optional[dict] = None
 
 
+class BridgeActionPlanRequest(BaseModel):
+    objective: str = Field(max_length=4000)
+    candidate_action: Optional[dict] = None
+    source: str = Field(default="local-bridge", max_length=80)
+    execute: bool = False
+    allow_requires_confirmation: bool = False
+
+
 class BridgeInboxMessageRequest(BaseModel):
     text: str = Field(max_length=4000)
     source: str = Field(default="external", max_length=80)

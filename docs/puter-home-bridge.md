@@ -110,6 +110,32 @@ Todos los endpoints protegidos requieren el header:
 X-Bridge-Token: <contenido de %LOCALAPPDATA%\NeuralAgent\local_bridge_token.txt>
 ```
 
+## Planner de acciones
+
+Puter no carga llaves del proxy remoto en el navegador. Para acciones reales de Windows usa:
+
+```http
+POST /local-bridge/actions/plan
+```
+
+```json
+{
+  "objective": "abre el reproductor de musica",
+  "source": "arkaios-puter-app",
+  "execute": true,
+  "allow_requires_confirmation": false
+}
+```
+
+El bridge local consulta `ARKAIOS_ACTION_PLANNER_URL` con `ARKAIOS_ACTION_PLANNER_KEY` o `PROXY_API_KEY`, recibe una accion validada desde `arkaios-service-proxy` y ejecuta solo acciones soportadas por el bridge: `open_app`, `focus_app`, `list_processes` y `screenshot`.
+
+Separacion actual:
+
+- `builderOS_Lab`: hub documental e indice del ecosistema.
+- `arkaios-service-proxy`: planner/policy runtime; valida, no ejecuta.
+- `neuralagentAI-main`: bridge local que ejecuta acciones seguras en Windows.
+- `puter-internetOS`: casa/worker Puter que pide planes al bridge local.
+
 Flujo minimo:
 
 1. Cliente externo envia una orden:
@@ -211,5 +237,5 @@ IA en segundo plano:
 
 Limitacion actual:
 
-- Ejecuta acciones locales seguras ya mapeadas: abrir Notepad, listar procesos y capturar pantalla.
+- Ejecuta acciones locales seguras aprobadas por el planner. Si el backend no tiene planner configurado, Puter conserva un fallback local minimo para abrir Notepad, listar procesos y capturar pantalla durante desarrollo.
 - El worker nativo de Puter puede usar APIs de Puter y Puter AI, pero las acciones visuales avanzadas del OS todavia necesitan mapeo especifico.
