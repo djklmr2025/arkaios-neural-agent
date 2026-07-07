@@ -1,3 +1,4 @@
+import ast
 import json
 import os
 import secrets
@@ -14,6 +15,7 @@ from schemas.local_bridge import (
     BridgeActionPlanRequest,
     BridgeActionRequest,
     BridgeActionResponse,
+    BridgeUiTarsActionRequest,
     BridgeInboxMessageRequest,
     InvocationAckRequest,
     InvocationEventRequest,
@@ -326,6 +328,71 @@ def _planned_action_to_bridge_request(planned: dict) -> BridgeActionRequest:
     raise CustomError(status.HTTP_400_BAD_REQUEST, "Planner_Unsupported_Action")
 
 
+def _parse_ui_tars_box(
+    box_value: object,
+    screen_width: int | None,
+    screen_height: int | None,
+) -> tuple[int, int] | None:
+    if box_value in (None, ""):
+        return None
+    if isinstance(box_value, str):
+        try:
+            box = ast.literal_eval(box_value)
+        except Exception:
+            cleaned = box_value.strip().strip("[]()")
+            box = [part.strip() for part in cleaned.split(",") if part.strip()]
+    else:
+        box = box_value
+    if not isinstance(box, (list, tuple)):
+        raise CustomError(status.HTTP_400_BAD_REQUEST, "Invalid_Ui_Tars_Box")
+    numbers = [float(value) for value in box]
+    if len(numbers) == 2:
+        x, y = numbers
+    elif len(numbers) == 4:
+        x = (numbers[0] + numbers[2]) / 2
+        y = (numbers[1] + numbers[3]) / 2
+    else:
+        raise CustomError(status.HTTP_400_BAD_REQUEST, "Invalid_Ui_Tars_Box")
+    if 0 <= x <= 1 and 0 <= y <= 1:
+        if not screen_width or not screen_height:
+            raise CustomError(status.HTTP_400_BAD_REQUEST, "Missing_Screen_Size")
+        x *= screen_width
+        y *= screen_height
+    return int(round(x)), int(round(y))
+
+
+def _ui_tars_to_bridge_action(request: BridgeUiTarsActionRequest) -> BridgeActionRequest | None:
+    action_type = request.action_type.strip().lower()
+    inputs = request.action_inputs or {}
+    start = _parse_ui_tars_box(inputs.get("start_box"), request.screen_width, request.screen_height)
+
+    if action_type in {"click", "left_click", "left_single"}:
+        if not start:
+            raise CustomError(status.HTTP_400_BAD_REQUEST, "Missing_Coordinates")
+        return BridgeActionRequest(action="click", x=start[0], y=start[1], clicks=1, button="left")
+
+    if action_type in {"left_double", "double_click"}:
+        if not start:
+            raise CustomError(status.HTTP_400_BAD_REQUEST, "Missing_Coordinates")
+        return BridgeActionRequest(action="click", x=start[0], y=start[1], clicks=2, button="left")
+
+    if action_type in {"right_click", "right_single"}:
+        if not start:
+            raise CustomError(status.HTTP_400_BAD_REQUEST, "Missing_Coordinates")
+        return BridgeActionRequest(action="click", x=start[0], y=start[1], clicks=1, button="right")
+
+    if action_type == "type":
+        content = inputs.get("content")
+        return BridgeActionRequest(action="type_text", text=str(content or ""))
+
+    if action_type == "hotkey":
+        key_value = inputs.get("key") or inputs.get("hotkey") or ""
+        keys = [key for key in str(key_value).replace("+", " ").split() if key]
+        return BridgeActionRequest(action="hotkey", keys=keys)
+
+    return None
+
+
 @router.get("/health")
 def health():
     return {
@@ -335,6 +402,7 @@ def health():
         "eyes_base_url": EYES_BASE_URL,
         "actions": [
             "plan",
+            "ui_tars",
             "open_app",
             "list_processes",
             "focus_app",
@@ -793,6 +861,52 @@ def plan_action(request: BridgeActionPlanRequest, x_bridge_token: str | None = H
         "plan": planned,
         "result": result.dict(),
     }
+
+
+@router.post("/actions/ui-tars")
+def run_ui_tars_action(request: BridgeUiTarsActionRequest, x_bridge_token: str | None = Header(default=None)):
+    _require_token(x_bridge_token)
+    action_type = request.action_type.strip().lower()
+    inputs = request.action_inputs or {}
+
+    if action_type in {"finished", "call_user", "user_stop"}:
+        return {
+            "status": "success",
+            "message": f"UI-TARS terminal action received: {action_type}",
+            "data": {"action_type": action_type},
+        }
+
+    if action_type == "wait":
+        duration = inputs.get("duration") or inputs.get("seconds") or 5
+        try:
+            seconds = max(0, min(float(duration), 30))
+        except Exception:
+            seconds = 5
+        time.sleep(seconds)
+        return BridgeActionResponse(
+            status="success",
+            message=f"Waited {seconds:g}s",
+            data={"seconds": seconds},
+        )
+
+    if action_type == "scroll":
+        start = _parse_ui_tars_box(inputs.get("start_box"), request.screen_width, request.screen_height)
+        data = _eyes_post(
+            "/scroll",
+            {
+                "direction": str(inputs.get("direction") or "down").lower(),
+                "amount": int(inputs.get("amount") or 5),
+                "x": start[0] if start else None,
+                "y": start[1] if start else None,
+            },
+        )
+        return BridgeActionResponse(status="success", message="Scroll executed", data=data)
+
+    bridge_request = _ui_tars_to_bridge_action(request)
+    if bridge_request:
+        return run_action(bridge_request, x_bridge_token)
+
+    raise CustomError(status.HTTP_400_BAD_REQUEST, "Unsupported_Ui_Tars_Action")
 
 
 @router.post("/actions", response_model=BridgeActionResponse)

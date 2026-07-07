@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -21,6 +21,13 @@ class BridgeActionRequest(BaseModel):
     button: str = "left"
     text: Optional[str] = Field(default=None, max_length=4000)
     keys: Optional[list[str]] = None
+
+
+class BridgeUiTarsActionRequest(BaseModel):
+    action_type: str = Field(max_length=80)
+    action_inputs: dict[str, Any] = Field(default_factory=dict)
+    screen_width: Optional[int] = Field(default=None, gt=0)
+    screen_height: Optional[int] = Field(default=None, gt=0)
 
 
 class BridgeActionResponse(BaseModel):

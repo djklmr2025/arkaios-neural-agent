@@ -129,6 +129,27 @@ POST /local-bridge/actions/plan
 
 El bridge local consulta `ARKAIOS_ACTION_PLANNER_URL` con `ARKAIOS_ACTION_PLANNER_KEY` o `PROXY_API_KEY`, recibe una accion validada desde `arkaios-service-proxy` y ejecuta solo acciones soportadas por el bridge: `open_app`, `focus_app`, `list_processes` y `screenshot`.
 
+## Acciones tipo UI-TARS
+
+Para modelos u operadores que devuelvan acciones estilo UI-TARS, el bridge expone un adaptador:
+
+```http
+POST /local-bridge/actions/ui-tars
+```
+
+```json
+{
+  "action_type": "click",
+  "action_inputs": {
+    "start_box": "[0.42, 0.51, 0.48, 0.57]"
+  },
+  "screen_width": 1920,
+  "screen_height": 1080
+}
+```
+
+El adaptador convierte acciones compatibles a acciones locales existentes: `click`, `left_double`, `right_single`, `type`, `hotkey`, `wait`, `finished` y `call_user`. `scroll` se delega al servicio Eyes/Hands cuando exista el endpoint local correspondiente. Estas acciones no sustituyen al planner remoto; son pasos de ejecucion dentro de una sesion autorizada.
+
 Separacion actual:
 
 - `builderOS_Lab`: hub documental e indice del ecosistema.
