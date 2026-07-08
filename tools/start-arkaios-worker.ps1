@@ -31,6 +31,17 @@ if ($Restart) {
         ForEach-Object {
             Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
         }
+
+    for ($i = 0; $i -lt 10; $i++) {
+        $running = Get-CimInstance Win32_Process |
+            Where-Object {
+                $_.Name -like "python*" -and
+                $_.CommandLine -like "*arkaios_worker.py*" -and
+                $_.CommandLine -like "*$ChannelId*"
+            }
+        if (!$running) { break }
+        Start-Sleep -Milliseconds 500
+    }
 }
 
 $running = Get-CimInstance Win32_Process |

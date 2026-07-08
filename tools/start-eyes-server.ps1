@@ -4,14 +4,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$eyesDir = "C:\ARKAIOS\Agente Autonomo MVP\mcp_server"
+$eyesDir = "C:\ARKAIOS\ELEMIA-v4-arkaios-main\desktop-mcp"
 $python = Join-Path $eyesDir "venv\Scripts\python.exe"
 $server = Join-Path $eyesDir "eyes_server.py"
 $stdout = Join-Path $eyesDir "eyes_stdout.log"
 $stderr = Join-Path $eyesDir "eyes_stderr.log"
 
 if (!(Test-Path $python)) {
-    throw "No encontre Python del mcp_server: $python"
+    throw "No encontre Python del desktop-mcp: $python"
 }
 
 if (!(Test-Path $server)) {
@@ -21,12 +21,22 @@ if (!(Test-Path $server)) {
 if ($Restart) {
     Get-CimInstance Win32_Process |
         Where-Object {
-            $_.Name -eq "python.exe" -and
-            $_.CommandLine -like "*mcp_server*eyes_server.py*"
+            $_.Name -like "python*" -and
+            $_.CommandLine -like "*eyes_server.py*"
         } |
         ForEach-Object {
             Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
         }
+
+    for ($i = 0; $i -lt 10; $i++) {
+        $running = Get-CimInstance Win32_Process |
+            Where-Object {
+                $_.Name -like "python*" -and
+                $_.CommandLine -like "*eyes_server.py*"
+            }
+        if (!$running) { break }
+        Start-Sleep -Milliseconds 500
+    }
 }
 
 if (!(Get-NetTCPConnection -LocalPort 8001 -State Listen -ErrorAction SilentlyContinue)) {
