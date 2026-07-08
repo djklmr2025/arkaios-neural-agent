@@ -1,38 +1,46 @@
-# NeuralAgent Puter Home
+# ARKAIOS Online Home
 
-MVP de la casa Puter para NeuralAgent.
+Casa web ligera de ARKAIOS para trabajar con Puter real/nube y el bridge local de NeuralAgent.
 
-Puter queda como entorno de identidad, AI y workspace del agente. El control real de Windows se hace por `NeuralAgent Local Bridge`, un endpoint local del backend que solo acepta acciones limitadas con token.
+Este modo no arranca `C:\ARKAIOS\puter-internetOS`. Carga `https://js.puter.com/v2/`, usa la cuenta real de Puter del navegador y manda acciones del PC al `NeuralAgent Local Bridge`.
+
+## Modos ARKAIOS
+
+- `ARRANCAR_ARKAIOS_ONLINE.bat`: modo recomendado para uso real con Puter nube.
+- `ARRANCAR_ARKAIOS_CORE.bat`: modo lab/local; arranca tambien `puter-internetOS` para desarrollo offline y pruebas internas.
 
 ## Ejecutar
 
-1. Arranca el backend local:
+Desde `C:\ARKAIOS`:
 
 ```powershell
-cd C:\ARKAIOS\neuralagentAI-main\backend
-.\venv\Scripts\python.exe .\run_server.py
+C:\ARKAIOS\ARRANCAR_ARKAIOS_ONLINE.bat
 ```
 
-2. Sirve esta carpeta por HTTP:
+El script hace:
+
+- Arranca `NeuralAgent Local Bridge` en `http://127.0.0.1:8000/local-bridge`.
+- Arranca Eyes/Hands en `http://127.0.0.1:8001`.
+- Sirve esta app en `http://127.0.0.1:4177`.
+- Carga el token local desde `%LOCALAPPDATA%\NeuralAgent\local_bridge_token.txt`.
+
+Para desarrollo manual:
 
 ```powershell
-cd C:\ARKAIOS\neuralagentAI-main\puter_home
-py -3 -m http.server 4177
+C:\ARKAIOS\neuralagentAI-main\tools\start-arkaios-online.ps1 -Restart -OpenBrowser
 ```
 
-3. Abre:
+## Puter real
 
-```text
-http://127.0.0.1:4177
+La app usa:
+
+```html
+<script src="https://js.puter.com/v2/"></script>
 ```
 
-4. Valida el bridge. Si usas `tools\serve-puter-home.ps1`, el token se carga automaticamente desde:
+Eso permite que ARKAIOS vea y use la cuenta real, apps reales, storage real y APIs reales de Puter. El bridge local solo se usa para tocar Windows.
 
-```text
-%LOCALAPPDATA%\NeuralAgent\local_bridge_token.txt
-```
-
-5. Prueba `Abrir Bloc de notas` o escribe `abre el reproductor de musica`.
+Prueba `Conectar Puter`, luego `Probar bridge`, y despues `Abrir Bloc de notas` o escribe `abre el reproductor de musica`.
 
 ## Seguridad
 
@@ -45,4 +53,4 @@ El bridge solo permite:
 - `screenshot` con confirmacion.
 - `focus_app` para apps permitidas.
 
-La app Puter no debe recibir permisos amplios de sistema sin pairing local y confirmacion del usuario.
+La app web no debe recibir permisos amplios de sistema sin pairing local y confirmacion del usuario. El token del bridge se escribe en `bridge-config.js` solo para servir localmente en `127.0.0.1`.
